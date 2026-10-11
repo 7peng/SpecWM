@@ -1,0 +1,11 @@
+# cube: LeWM on the play corpus alone (mixture schedule pinned).
+#   MUJOCO_GL=egl python src/train_lewm.py --config-name=cube_lewm_play run_id=cube_lewm_play-1
+defaults:
+- cube_lewm
+- _self_
+data:
+  dataset:
+    name: cube_play
+    path: ${oc.env:CUBE_STAGE_DIR}/cube_play.h5
+scheduler:
+  steps_per_epoch: 11125

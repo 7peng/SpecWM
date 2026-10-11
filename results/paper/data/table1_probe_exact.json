@@ -1,0 +1,126 @@
+{
+  "artifact": "Table 1 OGBench Scene object and state-factor linear probes",
+  "source": "Saved probe output used for the submitted table; values were not recomputed for this artifact.",
+  "display_note": "The submitted PDF displays the eight kernel rows. The LeWM and untrained reference rows are retained here, and in the generated provenance table, to provide the complete ten-row output requested for reproducibility.",
+  "protocol": {
+    "corpus": "scene_play_mix_lateonset.h5",
+    "corpus_rows": 2000000,
+    "sampling": "5000 rows sampled without replacement from the full corpus with numpy.random.default_rng(0), then sorted",
+    "sample_seed": 0,
+    "sample_rows_sha256": "296f43ca76b58f32ca1d4be538ee6068cf27e8536d714778ab0a2e24c3495132",
+    "episode_groups_sha256": "75c0d2098167c9f1065909e96033f283af1d036ea7bed89ff85f82f4657cbbbd",
+    "episode_scope": "Outer and inner readout splits hold out complete episodes. The sampled rows were not restricted to episodes held out from encoder training.",
+    "representation": "Raw 192-dimensional projector(CLS) embedding, without emb_norm",
+    "targets": {
+      "cube": "qpos[14:17]",
+      "arm": "qpos[0:7]",
+      "drawer": "qpos[23]",
+      "window": "qpos[24]",
+      "buttons": "button_states"
+    },
+    "outer_fit": "Five episode-grouped 80/20 splits with seeds 0,1,2,3,4; report mean test R2, uniformly averaged across a target's coordinates",
+    "ridge": "sklearn.linear_model.Ridge with intercept",
+    "alpha_selection": "Per outer split, maximize mean R2 over two episode-grouped 80/20 inner splits with seeds 1000 and 1001",
+    "alpha_grid": [0.01, 0.03162277660168379, 0.1, 0.31622776601683794, 1.0, 3.1622776601683795, 10.0, 31.622776601683793, 100.0, 316.2277660168379, 1000.0, 3162.2776601683795, 10000.0],
+    "centering": "For each outer fit, X and Y are centered and scaled using outer-training statistics only. Inner selection scales X and centers Y using inner-training statistics. No per-episode centering is applied.",
+    "scene_average": "Unweighted mean of cube, arm, drawer, window, and buttons R2",
+    "training_seed": 2
+  },
+  "reproduce": {
+    "script": "results/paper/scripts/probe_table1.py",
+    "command": "python results/paper/scripts/probe_table1.py --dataset <dataset-root>/scene_play_mix_lateonset.h5 --checkpoint-root <checkpoint-root>/lewm --out <output.json>",
+    "note": "Checkpoint binaries are intentionally not distributed in this repository. The run identifiers, checkpoint-relative filenames, and SHA-256 digests below identify the evaluated files."
+  },
+  "rows": [
+    {
+      "objective": "Underspecified",
+      "kernel": "Temporal",
+      "run_id": "scene-mixlate-lag-2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "17cdacc202ba56e755646b732ef9f4e77970cf890bf574041a9c04f58d32e9f2",
+      "r2": {"cube": 0.7920330717221515, "arm": 0.6714833312349305, "drawer": 0.9115926936011703, "window": 0.8739201634197811, "buttons": 0.9617662060814615, "scene_average": 0.842159093211899}
+    },
+    {
+      "objective": "Underspecified",
+      "kernel": "Quasimetric",
+      "run_id": "scene-mixlate-2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "ee211484c0afc61e82bbdfac2b7b6809e31e8db56fe478108e992f52647ba427",
+      "r2": {"cube": 0.51220934877572, "arm": 0.6645546093601997, "drawer": 0.8957413277796753, "window": 0.8834425494979582, "buttons": 0.9408853966450869, "scene_average": 0.7793666464117279}
+    },
+    {
+      "objective": "Underspecified",
+      "kernel": "State",
+      "run_id": "scene-kab-within-state-buttons-s2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "861c9dc00c2515440f22c5e6547e5a4ad226f8be1d9c6068426d77f4fff3bd55",
+      "r2": {"cube": 0.5653795063369034, "arm": 0.6936501526254784, "drawer": 0.9839579133488539, "window": 0.9943413878736929, "buttons": 0.9980620570335796, "scene_average": 0.8470782034437017}
+    },
+    {
+      "objective": "Underspecified",
+      "kernel": "Proprioception",
+      "run_id": "scene-kab-within-proprio-s2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "11e5082d875e929536c7b3d17ae926992a5271e41bb6195b1b23bd3a93e1f13a",
+      "r2": {"cube": 0.097039965585385, "arm": 0.6943475864890326, "drawer": 0.0069665445645607175, "window": 0.0012132373238919135, "buttons": 0.02151008355886479, "scene_average": 0.16421548350434698}
+    },
+    {
+      "objective": "Underspecified",
+      "kernel": "Depth",
+      "run_id": "scene-kab-within-depth-s2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "9d49063e8649d703ffa5cffefefdc6f343eb163caa119af21e56cd3fefd0d56b",
+      "r2": {"cube": 0.0916716977793965, "arm": 0.5987565787237855, "drawer": 0.014525036678743341, "window": 0.009417590889891603, "buttons": 0.013839131605621812, "scene_average": 0.14564200713548775}
+    },
+    {
+      "objective": "Fully specified",
+      "kernel": "State",
+      "run_id": "scene-kab-full-state-buttons-pa05-rel-s2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "5efef766900183b39c42d040f48a33d30655b8600aac422eca514930a9206c86",
+      "r2": {"cube": 0.9584206218429646, "arm": 0.7302176411414412, "drawer": 0.9917307920209044, "window": 0.9913419694075696, "buttons": 0.9908528657862332, "scene_average": 0.9325127780398226}
+    },
+    {
+      "objective": "Fully specified",
+      "kernel": "Proprioception",
+      "run_id": "scene-kab-full-proprio-pa05-rel-s2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "5b0b88ea4931df379c4289ece0aabd02aa9217aa1f39078866d767e4f76db0e2",
+      "r2": {"cube": 0.08039610993407963, "arm": 0.6669178977184217, "drawer": 0.006918465463562539, "window": 0.0036723057297145313, "buttons": 0.02058938545371941, "scene_average": 0.15569883285989955}
+    },
+    {
+      "objective": "Fully specified",
+      "kernel": "Depth",
+      "run_id": "scene-kab-full-depth-pa05-rel-s2",
+      "checkpoint": "step_snaps/step_33000.pt",
+      "checkpoint_step": 33000,
+      "checkpoint_sha256": "7af17e36e6230e935f79e352d32c0c1612bef8861bddf0527207f706b32bc73a",
+      "r2": {"cube": 0.09414209935379741, "arm": 0.5853310689811974, "drawer": 0.8671899165707764, "window": 0.9109013613373348, "buttons": 0.039618225434646034, "scene_average": 0.4994365343355504}
+    },
+    {
+      "objective": "Reference",
+      "kernel": "LeWM",
+      "run_id": "scene-lewm-mixlate-2",
+      "checkpoint": "weights_epoch_3.pt",
+      "checkpoint_step": 33375,
+      "checkpoint_sha256": "38b5856fa014befed3f39ffc2db749110d8276839657ec38123285188920ae16",
+      "r2": {"cube": 0.16284821428589913, "arm": 0.40262932793592787, "drawer": 0.9020627312303464, "window": 0.9644622748536087, "buttons": 0.9800520835426669, "scene_average": 0.6824109263696897}
+    },
+    {
+      "objective": "Reference",
+      "kernel": "Untrained encoder",
+      "run_id": "random-init-seed-0",
+      "checkpoint": null,
+      "checkpoint_step": 0,
+      "checkpoint_sha256": null,
+      "r2": {"cube": 0.07218496069789558, "arm": 0.4378682661287675, "drawer": 0.9141031271015786, "window": 0.8798113727455809, "buttons": 0.7756269784708208, "scene_average": 0.6159189410289286}
+    }
+  ]
+}

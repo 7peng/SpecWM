@@ -1,0 +1,31 @@
+{
+ "arm": "cube-mixlate-t2-det-1-s32000",
+ "policy": "lewm/cube-mixlate-t2-det-1/weights_step_32000.pt",
+ "mode": "delta",
+ "action_block": 5,
+ "ckpt_sha256_16": "2eeb4f87c9c78df6",
+ "git_sha": "407d98b294701a1e413d5c41fc400e3d9cd571df",
+ "git_dirty": 694,
+ "date": "2026-09-19T23:56:02.105270",
+ "extra": [],
+ "protocol": "ICLR-scene-cem-v3",
+ "eval_config": "cube",
+ "batches": 1,
+ "stats_dataset": "cube_play_mix_lateonset",
+ "dataset_override": null,
+ "stablewm_home": "${STABLEWM_HOME}",
+ "action_stats": {
+  "name": "cube_play_mix_lateonset",
+  "path": "${STABLEWM_HOME}/datasets/cube_play_mix_lateonset.h5",
+  "bytes": 71139614632,
+  "mtime": "2026-09-19T20:46:37.037351"
+ },
+ "task_sets": {
+  "25": {
+   "name": "cube_offset_tasks_O25",
+   "path": "${STABLEWM_HOME}/datasets/cube_offset_tasks_O25.h5",
+   "bytes": 93525889,
+   "mtime": "2026-09-05T03:23:26.729053"
+  }
+ }
+}

@@ -1,0 +1,73 @@
+# env	arm	seed	entry	recipe	run_id	offset	role	overrides
+cube	lewm	1	train_lewm	cube_lewm	cube-lewm-mixlate-1	25	main	
+cube	lewm	2	train_lewm	cube_lewm	cube-lewm-mixlate-2	25	main	
+cube	lewm	3	train_lewm	cube_lewm	cube-lewm-mixlate-3	25	main	
+cube	temporal	1	train_spec	cube_temporal	cube-mixlate-lag-1	25	main	
+cube	temporal	2	train_spec	cube_temporal	cube-mixlate-lag-2	25	main	
+cube	temporal	3	train_spec	cube_temporal	cube-mixlate-lag-3	25	main	
+cube	quasimetric	1	train_spec	cube_quasimetric	cube-mixlate-t2-1	25	main	
+cube	quasimetric	2	train_spec	cube_quasimetric	cube-mixlate-t2-2	25	main	
+cube	quasimetric	3	train_spec	cube_quasimetric	cube-mixlate-t2-3	25	main	
+cube	temporal-sg	1	train_spec	cube_temporal	cube-mixlate-lag-det-1	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+cube	temporal-sg	2	train_spec	cube_temporal	cube-mixlate-lag-det-2	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+cube	temporal-sg	3	train_spec	cube_temporal	cube-mixlate-lag-det-3	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+cube	quasimetric-sg	1	train_spec	cube_quasimetric	cube-mixlate-t2-det-1	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+cube	quasimetric-sg	2	train_spec	cube_quasimetric	cube-mixlate-t2-det-2	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+cube	quasimetric-sg	3	train_spec	cube_quasimetric	cube-mixlate-t2-det-3	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+cube	teacher	1	train_spec	cube_teacher	cube-qrl-linear-fs5-mixlate-1	25	teacher	
+scene	lewm	1	train_lewm	scene_lewm	scene-lewm-mixlate-1	25	main	
+scene	lewm	2	train_lewm	scene_lewm	scene-lewm-mixlate-2	25	main	
+scene	lewm	3	train_lewm	scene_lewm	scene-lewm-mixlate-3	25	main	
+scene	temporal	1	train_spec	scene_temporal	scene-mixlate-lag-1	25	main	
+scene	temporal	2	train_spec	scene_temporal	scene-mixlate-lag-2	25	main	
+scene	temporal	3	train_spec	scene_temporal	scene-mixlate-lag-3	25	main	
+scene	quasimetric	1	train_spec	scene_quasimetric	scene-mixlate-1	25	main	
+scene	quasimetric	2	train_spec	scene_quasimetric	scene-mixlate-2	25	main	
+scene	quasimetric	3	train_spec	scene_quasimetric	scene-mixlate-3	25	main	
+scene	temporal-sg	1	train_spec	scene_temporal	scene-mixlate-lag-det-1	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+scene	temporal-sg	2	train_spec	scene_temporal	scene-mixlate-lag-det-2	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+scene	temporal-sg	3	train_spec	scene_temporal	scene-mixlate-lag-det-3	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+scene	quasimetric-sg	1	train_spec	scene_quasimetric	scene-mixlate-det-1	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+scene	quasimetric-sg	2	train_spec	scene_quasimetric	scene-mixlate-det-2	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+scene	quasimetric-sg	3	train_spec	scene_quasimetric	scene-mixlate-det-3	25	stopgrad	loss.spectral.anchor.stop_gradient=true
+scene	teacher	1	train_spec	scene_teacher	scene-qrl-linear-fs5-mixlate-1	25	teacher	
+calvin	lewm	1	train_lewm	calvin_lewm	calvin-lewm-mixlate-1	50	main	
+calvin	lewm	2	train_lewm	calvin_lewm	calvin-lewm-mixlate-2	50	main	
+calvin	lewm	3	train_lewm	calvin_lewm	calvin-lewm-mixlate-3	50	main	
+calvin	temporal	1	train_spec	calvin_temporal	calvin-mixlate-lag-far-4	50	main	
+calvin	temporal	2	train_spec	calvin_temporal	calvin-mixlate-lag-far-5	50	main	
+calvin	temporal	3	train_spec	calvin_temporal	calvin-mixlate-lag-far-6	50	main	
+calvin	quasimetric	1	train_spec	calvin_quasimetric	calvin-mixlate-far-1	50	main	
+calvin	quasimetric	2	train_spec	calvin_quasimetric	calvin-mixlate-far-2	50	main	
+calvin	quasimetric	3	train_spec	calvin_quasimetric	calvin-mixlate-far-3	50	main	
+calvin	temporal-sg	1	train_spec	calvin_temporal	calvin-mixlate-lag-far-det-1	50	stopgrad	loss.spectral.anchor.stop_gradient=true
+calvin	temporal-sg	2	train_spec	calvin_temporal	calvin-mixlate-lag-far-det-2	50	stopgrad	loss.spectral.anchor.stop_gradient=true
+calvin	temporal-sg	3	train_spec	calvin_temporal	calvin-mixlate-lag-far-det-3	50	stopgrad	loss.spectral.anchor.stop_gradient=true
+calvin	quasimetric-sg	1	train_spec	calvin_quasimetric	calvin-mixlate-far-det-1	50	stopgrad	loss.spectral.anchor.stop_gradient=true
+calvin	quasimetric-sg	2	train_spec	calvin_quasimetric	calvin-mixlate-far-det-2	50	stopgrad	loss.spectral.anchor.stop_gradient=true
+calvin	quasimetric-sg	3	train_spec	calvin_quasimetric	calvin-mixlate-far-det-3	50	stopgrad	loss.spectral.anchor.stop_gradient=true
+calvin	teacher	1	train_spec	calvin_teacher	calvin-qrl-linear-fs10-mixlate-1	50	teacher	
+scene	temporal-play	1	train_spec	scene_temporal_play	scene-play-lag-1	25	play	
+scene	lewm-play	1	train_lewm	scene_lewm_play	scene-lewm-play-1	25	play	
+cube	temporal-play	1	train_spec	cube_temporal_play	cube-play-lag-1	25	play	
+cube	lewm-play	1	train_lewm	cube_lewm_play	cube-lewm-play-1	25	play	
+calvin	temporal-play	1	train_spec	calvin_temporal_play	calvin-play-lag-far-1	50	play	
+calvin	temporal-play-sigreg	1	train_spec	calvin_temporal_play_sigreg	calvin-play-lag-far-sigreg-1	50	play	
+calvin	lewm-play	1	train_lewm	calvin_lewm_play	calvin-lewm-play-1	50	play	
+scene	within-temporal	1	train_spec	scene_clip_temporal	scene-spec-lag-1	25	spectral	
+scene	within-quasimetric	1	train_spec	scene_clip_quasimetric	scene-spec-qm-1	25	spectral	
+scene	within-state	1	train_spec	scene_clip_state	scene-spec-state-2	25	spectral	
+scene	within-proprio	1	train_spec	scene_clip_proprio	scene-spec-proprio-1	25	spectral	
+scene	within-depth	1	train_spec	scene_clip_depth	scene-spec-depth-1	25	spectral	
+scene	full-state	1	train_spec	scene_full_state	scene-full-state-2	25	spectral	
+scene	full-proprio	1	train_spec	scene_full_proprio	scene-full-proprio-2	25	spectral	
+scene	full-depth	1	train_spec	scene_full_depth	scene-full-depth-2	25	spectral	
+scene	kab-paper	2	train_spec	scene_state_ablation_centered_tempered	scene-kab-full-state-buttons-pa05-rel-s2	25	kab	
+scene	table1-clip-state	2	train_spec	scene_table1_clip_state	scene-kab-within-state-buttons-s2	25	table1	
+scene	table1-clip-proprio	2	train_spec	scene_table1_clip_proprio	scene-kab-within-proprio-s2	25	table1	
+scene	table1-clip-depth	2	train_spec	scene_table1_clip_depth	scene-kab-within-depth-s2	25	table1	
+scene	table1-full-proprio	2	train_spec	scene_table1_full_proprio	scene-kab-full-proprio-pa05-rel-s2	25	table1	
+scene	table1-full-depth	2	train_spec	scene_table1_full_depth	scene-kab-full-depth-pa05-rel-s2	25	table1	
+scene	kab-nocenter	2	train_spec	scene_state_ablation_tempered	scene-kab-full-state-buttons-pa05-rel-nocenter-s2	25	kab	
+scene	kab-notemper	2	train_spec	scene_state_ablation_centered	scene-kab-full-state-buttons-pa05-rel-notemper-s2	25	kab	
+scene	kab-raw	2	train_spec	scene_state_ablation_raw	scene-kab-full-state-buttons-pa05-rel-raw-s2	25	kab	

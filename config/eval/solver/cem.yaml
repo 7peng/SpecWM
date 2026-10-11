@@ -1,0 +1,9 @@
+_target_: stable_worldmodel.solver.CEMSolver
+model: ???
+batch_size: ${eval.num_eval}   # all envs in one solve; per-env CEM is independent (top-k per row)
+num_samples: 300
+var_scale: 1.0
+n_steps: 30
+topk: 30
+device: "cuda"
+seed: ${seed}

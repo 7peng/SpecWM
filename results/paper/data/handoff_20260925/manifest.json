@@ -1,0 +1,17 @@
+{
+  "created_for": "collaborator agent handoff",
+  "scored_students": 13,
+  "cem_rows": 67,
+  "probe_rows": 26,
+  "support_or_excluded_rows": 10,
+  "cem_result_root": "${REPO}/results/cem_queue_20260925/source/results",
+  "probe_result_root": "${REPO}/results/overnight_eval_20260925/probes",
+  "checkpoint_root": "${STABLEWM_HOME}/checkpoints/lewm",
+  "completion_audit": "${REPO}/results/overnight_eval_20260925/all_complete.json",
+  "audit_status": {
+    "cem": "67/67",
+    "probes": "13/13",
+    "modal_download_sets": "6/6",
+    "issues": []
+  }
+}

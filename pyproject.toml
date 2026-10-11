@@ -1,0 +1,33 @@
+[project]
+name = "specwm"
+version = "0.1.0"
+description = "SpecWM: spectral world models from pixels"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "stable-worldmodel[train,env]",
+    "stable-pretraining==0.1.4",
+    "transformers==5.9.0",
+    "datasets",
+    "h5py",
+    "hdf5plugin",
+    "kornia",
+    "scikit-learn",
+    "torch==2.12.0+cu126",
+    "torchvision==0.27.0+cu126",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+stable-worldmodel = { git = "https://github.com/galilai-group/stable-worldmodel.git" }
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true

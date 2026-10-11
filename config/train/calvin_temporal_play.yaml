@@ -1,0 +1,13 @@
+# calvin: SpecWM temporal kernel on the play corpus alone (mixture schedule pinned).
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=calvin_temporal_play run_id=calvin_temporal_play-1
+defaults:
+- calvin_temporal
+- _self_
+data:
+  dataset:
+    name: calvin_abc_d
+    path: ${oc.env:CALVIN_STAGE_DIR}/calvin_abc_d.h5
+trainer:
+  limit_train_batches: 118725
+scheduler:
+  steps_per_epoch: 118725

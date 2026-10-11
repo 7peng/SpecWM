@@ -1,0 +1,11 @@
+# calvin: LeWM on the play corpus alone (mixture schedule pinned).
+#   MUJOCO_GL=egl python src/train_lewm.py --config-name=calvin_lewm_play run_id=calvin_lewm_play-1
+defaults:
+- calvin_lewm
+- _self_
+data:
+  dataset:
+    name: calvin_abc_d
+    path: ${oc.env:CALVIN_STAGE_DIR}/calvin_abc_d.h5
+scheduler:
+  steps_per_epoch: 11125

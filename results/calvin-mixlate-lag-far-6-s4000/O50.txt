@@ -1,0 +1,67 @@
+
+==== CONFIG ====
+cache_dir: null
+solver:
+  _target_: stable_worldmodel.solver.CEMSolver
+  model: ???
+  batch_size: ${eval.num_eval}
+  num_samples: 300
+  var_scale: 1.0
+  n_steps: 30
+  topk: 30
+  device: cuda
+  seed: ${seed}
+world:
+  env_name: calvin_sim_env:lewm/CalvinTask-v0
+  num_envs: ${eval.num_eval}
+  max_episode_steps: 200
+dataset:
+  stats: calvin_abc_d_mix_lateonset
+  keys_to_cache:
+  - action
+seed: 42
+policy: lewm/calvin-mixlate-lag-far-6/weights_step_4000.pt
+delta_cosine_cost: true
+cost_metric: cos
+cost_predict_kind: rollout
+plan_config:
+  horizon: 5
+  receding_horizon: 3
+  action_block: 10
+eval:
+  num_eval: 100
+  goal_offset_steps: 50
+  eval_budget: 100
+  img_size: 224
+  dataset_name: calvin_offset_tasks_O50
+  callables:
+  - method: set_state
+    args:
+      robot_obs:
+        value: robot_obs
+      scene_obs:
+        value: scene_obs
+      scene_id:
+        value: scene_id
+  - method: set_goal
+    args:
+      goal_scene_obs:
+        value: goal_scene_obs
+output:
+  filename: ${REPO}/results/calvin-mixlate-lag-far-6-s4000/O50.txt
+results_dir: ${REPO}/results/calvin-mixlate-lag-far-6-s4000
+
+==== RESULTS ====
+metrics: {'success_rate': 33.0, 'episode_successes': array([False, False, False,  True, False,  True, False,  True, False,
+       False, False,  True, False, False, False, False,  True, False,
+       False, False, False, False,  True,  True,  True,  True, False,
+       False, False,  True, False, False, False,  True, False,  True,
+        True, False, False, False, False,  True, False,  True,  True,
+       False, False,  True, False, False, False, False,  True, False,
+       False,  True,  True, False, False,  True, False,  True,  True,
+       False, False, False, False, False, False, False,  True, False,
+       False,  True, False, False,  True, False,  True,  True, False,
+       False, False, False, False, False,  True, False, False, False,
+        True, False, False, False, False,  True, False,  True, False,
+        True]), 'seeds': None}
+evaluation_time: 202.838223695755 seconds

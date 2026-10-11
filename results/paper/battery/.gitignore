@@ -1,0 +1,4 @@
+# regenerable from the checkpoints and the stage: `spectral_battery.py cache` / `cache-snaps` (20,000 frames x 224^2 pixels, 298 embedding snapshots)
+sample.npz
+emb_*.npy
+snaps/

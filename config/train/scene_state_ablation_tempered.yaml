@@ -1,0 +1,9 @@
+# scene: centering / tempering ablation: tempered, not centred.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_state_ablation_tempered run_id=scene_state_ablation_tempered-1
+defaults:
+- scene_state_ablation_centered_tempered
+- _self_
+loss:
+  spectral:
+    temper:
+      center: false

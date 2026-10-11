@@ -1,0 +1,56 @@
+# cube: SpecWM, temporal kernel.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=cube_temporal run_id=cube_temporal-1
+defaults:
+- env: cube
+- _self_
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-cube-within
+data:
+  dataset:
+    name: cube_play_mix_lateonset
+    path: ${oc.env:CUBE_STAGE_DIR}/cube_play_mix_lateonset.h5
+    raw_columns:
+    - qpos
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  spectral:
+    scope: clip
+    weight: 1.0
+    queries: rows
+    score_diagonal: true
+    min_live: 0.5
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+    factors:
+    - form: temporal
+      sigma: 7.0
+      weight: 1.0
+      monitor: lag
+step_snapshots:
+  stop: 240000
+  every: 1000

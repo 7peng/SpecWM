@@ -1,0 +1,71 @@
+# scene: SpecWM, quasimetric kernel.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_quasimetric run_id=scene_quasimetric-1
+defaults:
+- env: scene
+- _self_
+seed: 3072
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-scene-within
+data:
+  dataset:
+    name: scene_play_mix_lateonset
+    keys_to_load:
+    - pixels
+    - action
+    - qpos
+    keys_to_cache:
+    - action
+    - qpos
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play_mix_lateonset.h5
+    raw_columns:
+    - qpos
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  spectral:
+    scope: clip
+    weight: 1.0
+    queries: rows
+    score_diagonal: true
+    min_live: 0.5
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+    teachers:
+      linear:
+        spec: scene_linear_fs5
+        ckpt: ${oc.env:STABLEWM_HOME}/checkpoints/lewm/scene-qrl-linear-fs5-mixlate-1/step_snaps/step_9000.pt
+        symmetrize: mean
+    factors:
+    - form: quasimetric
+      teacher: linear
+      sigma: 7.1718
+      weight: 1.0
+      monitor: linear
+      orient: true
+step_snapshots:
+  stop: 240000
+  every: 1000

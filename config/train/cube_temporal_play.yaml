@@ -1,0 +1,11 @@
+# cube: SpecWM temporal kernel on the play corpus alone (mixture schedule pinned).
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=cube_temporal_play run_id=cube_temporal_play-1
+defaults:
+- cube_temporal
+- _self_
+data:
+  dataset:
+    name: cube_play
+    path: ${oc.env:CUBE_STAGE_DIR}/cube_play.h5
+scheduler:
+  steps_per_epoch: 66750

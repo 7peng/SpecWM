@@ -1,0 +1,26 @@
+\begin{table}[t]
+\centering
+\caption{Linear probe $R^2$ on episode-grouped held-out readout splits, OGBench Scene. Bold marks the best result per column and results within 0.01 of it.}
+\label{tab:kernel_probes}
+\begin{tabular}{llccccc}
+\toprule
+Objective & Kernel & Cube & Arm & Drawer & Window & Buttons \\
+\midrule
+\multirow{5}{*}{Underspecified}
+ & Temporal & 0.79 & 0.67 & 0.91 & 0.87 & 0.96 \\
+ & Quasimetric & 0.51 & 0.66 & 0.90 & 0.88 & 0.94 \\
+ & State & 0.57 & 0.69 & \textbf{0.98} & \textbf{0.99} & \textbf{1.00} \\
+ & Proprioception & 0.10 & 0.69 & 0.01 & 0.00 & 0.02 \\
+ & Depth & 0.09 & 0.60 & 0.01 & 0.01 & 0.01 \\
+\midrule
+\multirow{3}{*}{Fully specified}
+ & State & \textbf{0.96} & \textbf{0.73} & \textbf{0.99} & \textbf{0.99} & \textbf{0.99} \\
+ & Proprioception & 0.08 & 0.67 & 0.01 & 0.00 & 0.02 \\
+ & Depth & 0.09 & 0.59 & 0.87 & 0.91 & 0.04 \\
+\midrule
+\multirow{2}{*}{Reference}
+ & LeWM & 0.16 & 0.40 & 0.90 & 0.96 & 0.98 \\
+ & Untrained encoder & 0.07 & 0.44 & 0.91 & 0.88 & 0.78 \\
+\bottomrule
+\end{tabular}
+\end{table}

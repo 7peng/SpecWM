@@ -1,0 +1,50 @@
+# scene: LeWM: next-embedding MSE + SIGReg.
+#   MUJOCO_GL=egl python src/train_lewm.py --config-name=scene_lewm run_id=scene_lewm-1
+defaults:
+- env: scene
+- _self_
+seed: 3072
+full_ckpt_every_n_steps: 1600
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-scene-within
+data:
+  dataset:
+    name: scene_play_mix_lateonset
+    keys_to_load:
+    - pixels
+    - action
+    - qpos
+    keys_to_cache:
+    - action
+    - qpos
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play_mix_lateonset.h5
+trainer:
+  max_epochs: 6
+  limit_train_batches: 11125
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 138
+wm:
+  num_preds: 1
+  pred_norm: false
+  emb_norm: false
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.BatchNorm1d
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.BatchNorm1d
+loss:
+  sigreg:
+    weight: 0.09
+  pred_weight: 1.0
+step_snapshots:
+  stop: 240000
+  every: 2000

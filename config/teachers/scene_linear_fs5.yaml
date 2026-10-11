@@ -1,0 +1,76 @@
+# FROZEN TEACHER scene_linear_fs5: the model + QRL-head config of qrl_scene_linear_fs5 with every
+# interpolation resolved. action_encoder.input_dim is the checkpoint's own width (frame skip 5 x 5
+# action dims). cameras: null -- scene renders one view.
+model:
+  _target_: jepa.JEPA
+  embed_dim: 192
+  bottleneck_dim: 192
+  pred_norm: true
+  emb_norm: true
+  window_size: 1
+  pool: cls
+  window_causal: false
+  window_inert: false
+  encoder:
+    _target_: stable_pretraining.backbone.utils.vit_hf
+    size: tiny
+    patch_size: 14
+    image_size: 224
+    pretrained: false
+    use_mask_token: false
+  predictor:
+    _target_: networks.HorizonPredictor
+    num_frames: 3
+    max_horizon: 20
+    input_dim: 192
+    hidden_dim: 192
+    output_dim: 192
+    depth: 6
+    heads: 16
+    mlp_dim: 2048
+    dim_head: 64
+    dropout: 0.1
+    emb_dropout: 0.0
+    use_horizon_cond: true
+    window_size: 1
+  action_encoder:
+    _target_: networks.Embedder
+    input_dim: 25
+    emb_dim: 192
+    smoothed_dim: 25
+  projector:
+    _target_: networks.MLP
+    input_dim: 192
+    output_dim: 192
+    hidden_dim: 2048
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+      _partial_: true
+  pred_proj:
+    _target_: networks.MLP
+    input_dim: 192
+    output_dim: 192
+    hidden_dim: 2048
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+      _partial_: true
+head:
+  embed_dim: 192
+  hidden: 384
+  z_dim: 384
+  group_size: 16
+  push_offset: 15.0
+  push_beta: 1.0
+  push_samples: 128
+  step_cost: 1.0
+  step_eps: 0.25
+  dual_lr: 0.05
+  lambda_init: 1.0
+  push_linear: true
+  linear_min_gap: 1
+  push_within_clip: false
+  push_weight: 1.0
+  z_group_norm: true
+  scale_init: 1.92
+  lambda_max: 50.0
+cameras: null

@@ -1,0 +1,31 @@
+{
+ "arm": "scene-spec-qm-1-final",
+ "policy": "lewm/scene-spec-qm-1/weights_epoch_1.pt",
+ "mode": "delta",
+ "action_block": 5,
+ "ckpt_sha256_16": "5908e894b78133a3",
+ "git_sha": "407d98b294701a1e413d5c41fc400e3d9cd571df",
+ "git_dirty": 346,
+ "date": "2026-09-12T23:17:38.255823",
+ "extra": [],
+ "protocol": "ICLR-scene-cem-v3",
+ "eval_config": "scene",
+ "batches": 1,
+ "stats_dataset": "scene_play_qmz_fs5",
+ "dataset_override": null,
+ "stablewm_home": "${STABLEWM_HOME}",
+ "action_stats": {
+  "name": "scene_play_qmz_fs5",
+  "path": "${STABLEWM_HOME}/datasets/scene_play_qmz_fs5.h5",
+  "bytes": 1184957200,
+  "mtime": "2026-09-11T14:42:26.708549"
+ },
+ "task_sets": {
+  "75": {
+   "name": "scene_offset_tasks_O75",
+   "path": "${STABLEWM_HOME}/datasets/scene_offset_tasks_O75.h5",
+   "bytes": 401463641,
+   "mtime": "2026-07-18T23:40:19.399537"
+  }
+ }
+}

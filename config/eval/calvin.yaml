@@ -1,0 +1,46 @@
+# CALVIN goal-offset CEM eval: config/eval/scene.yaml with the CALVIN simulator behind it
+# (src/calvin_sim_env.py, one pybullet worker per env under $CALVIN_VENV). Same protocol driver
+# (scripts/eval_cem.py), same cost path (endpoint by AR horizon-1 rollout, 1 - cos to the goal),
+# same solver; the task sets are data/calvin/make_calvin_offset_tasks.py's non-trivial (s, s+O)
+# pairs and success is data/calvin/goal_predicate.py on the canonical scene_obs.
+defaults:
+  - launcher: local
+  - solver: cem
+  - _self_
+world:
+  env_name: calvin_sim_env:lewm/CalvinTask-v0   # module:id -> gym.make imports calvin_sim_env first
+  num_envs: ${eval.num_eval}
+  max_episode_steps: ??? # set to 2*eval_budget in eval.py
+dataset:
+  stats: calvin_abc_d              # OVERRIDDEN by eval_cem.py from train_meta.json: the TRAINING file's action stats
+  keys_to_cache:
+    - action
+seed: 42
+policy: ??? # REQUIRED: trained ckpt, e.g. lewm/<run>/weights_step_N.pt, or random
+plan_config:
+  horizon: 5
+  receding_horizon: 3
+  action_block: 10   # must equal the checkpoint's training frameskip (asserted); the fs10 arms
+eval:
+  num_eval: 100
+  goal_offset_steps: 50
+  eval_budget: 100
+  img_size: 224
+  dataset_name: calvin_offset_tasks_O50
+  callables:
+    # -- install the task's start state (the pack's canonical scene_obs; the env permutes to the sim's order)
+    - method: set_state
+      args:
+        robot_obs:
+          value: robot_obs
+        scene_obs:
+          value: scene_obs
+        scene_id:
+          value: scene_id
+    # -- the goal: scene_obs at the goal frame, scored by goal_predicate on every factor
+    - method: set_goal
+      args:
+        goal_scene_obs:
+          value: goal_scene_obs
+output:
+  filename: calvin_results.txt

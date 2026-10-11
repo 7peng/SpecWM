@@ -1,0 +1,63 @@
+# cube: SpecWM, quasimetric kernel.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=cube_quasimetric run_id=cube_quasimetric-1
+defaults:
+- env: cube
+- _self_
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-cube-within
+data:
+  dataset:
+    name: cube_play_mix_lateonset
+    path: ${oc.env:CUBE_STAGE_DIR}/cube_play_mix_lateonset.h5
+    raw_columns:
+    - qpos
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  spectral:
+    scope: clip
+    weight: 1.0
+    queries: rows
+    score_diagonal: true
+    min_live: 0.5
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+    teachers:
+      linear:
+        spec: scene_linear_fs5
+        ckpt: ${oc.env:STABLEWM_HOME}/checkpoints/lewm/cube-qrl-linear-fs5-mixlate-1/step_snaps/step_9000.pt
+        symmetrize: mean
+    factors:
+    - form: quasimetric
+      teacher: linear
+      sigma: 6.768
+      weight: 1.0
+      monitor: linear
+      orient: true
+step_snapshots:
+  stop: 240000
+  every: 1000

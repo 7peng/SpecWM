@@ -1,0 +1,55 @@
+# calvin: LeWM: next-embedding MSE + SIGReg.
+#   MUJOCO_GL=egl python src/train_lewm.py --config-name=calvin_lewm run_id=calvin_lewm-1
+defaults:
+- env: calvin
+- _self_
+full_ckpt_every_n_steps: 1600
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-calvin-within
+data:
+  dataset:
+    name: calvin_abc_d_mix_lateonset
+    path: ${oc.env:CALVIN_STAGE_DIR}/calvin_abc_d_mix_lateonset.h5
+    keys_to_load:
+    - pixels
+    - action
+    - scene_obs
+    - robot_obs
+    - ep_idx
+    - step_idx
+    keys_to_cache:
+    - action
+    - scene_obs
+    - robot_obs
+    - ep_idx
+    - step_idx
+trainer:
+  max_epochs: 6
+  limit_train_batches: 11125
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 138
+wm:
+  num_preds: 1
+  pred_norm: false
+  emb_norm: false
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.BatchNorm1d
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.BatchNorm1d
+loss:
+  sigreg:
+    weight: 0.09
+  pred_weight: 1.0
+step_snapshots:
+  stop: 240000
+  every: 2000

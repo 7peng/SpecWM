@@ -1,0 +1,32 @@
+{
+  "cost": {
+    "source": "displayed aggregates of the Scene cost / normalisation ablation figures",
+    "displayed_means": [
+      50.222222222222214,
+      50.888888888888886,
+      76.55555555555556,
+      76.55555555555556
+    ],
+    "displayed_error_magnitudes": [
+      3.4694432261208594,
+      3.5642254507797286,
+      2.2689531554580897,
+      2.364866288986356
+    ]
+  },
+  "normalization": {
+    "source": "displayed aggregates of the Scene cost / normalisation ablation figures",
+    "displayed_means": [
+      52.99999999999999,
+      51.333333333333336,
+      76.66666666666667,
+      77.0
+    ],
+    "displayed_error_magnitudes": [
+      4.000000000000001,
+      6.110100816276803,
+      1.5275252802144257,
+      2.6457514010721255
+    ]
+  }
+}

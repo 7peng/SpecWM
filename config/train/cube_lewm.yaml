@@ -1,0 +1,42 @@
+# cube: LeWM: next-embedding MSE + SIGReg.
+#   MUJOCO_GL=egl python src/train_lewm.py --config-name=cube_lewm run_id=cube_lewm-1
+defaults:
+- env: cube
+- _self_
+full_ckpt_every_n_steps: 1600
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-cube-within
+data:
+  dataset:
+    name: cube_play_mix_lateonset
+    path: ${oc.env:CUBE_STAGE_DIR}/cube_play_mix_lateonset.h5
+trainer:
+  max_epochs: 6
+  limit_train_batches: 11125
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 138
+wm:
+  num_preds: 1
+  pred_norm: false
+  emb_norm: false
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.BatchNorm1d
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.BatchNorm1d
+loss:
+  sigreg:
+    weight: 0.09
+  pred_weight: 1.0
+step_snapshots:
+  stop: 240000
+  every: 2000

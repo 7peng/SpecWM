@@ -1,0 +1,65 @@
+# cube: the quasimetric teacher (IQE head, linear push) the quasimetric arm's kernel is read from.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=cube_teacher run_id=cube_teacher-1
+defaults:
+- env: cube
+- _self_
+full_ckpt_every_n_steps: 2000
+optim_modules: (model|quasimetric_head)
+wandb:
+  config:
+    project: lewm-cube-qrl
+data:
+  dataset:
+    name: cube_play_mix_lateonset
+    path: ${oc.env:CUBE_STAGE_DIR}/cube_play_mix_lateonset.h5
+trainer:
+  max_epochs: 1
+  max_steps: 9500
+scheduler:
+  warmup_epochs: 0.02
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.HorizonPredictor
+    max_horizon: ${wm.num_preds}
+    use_horizon_cond: true
+  action_encoder:
+    smoothed_dim: 25
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+quasimetric_head:
+  weight: 1.0
+  head:
+    embed_dim: 192
+    hidden: 384
+    z_dim: 384
+    group_size: 16
+    push_offset: 15.0
+    push_beta: 1.0
+    push_samples: 128
+    step_cost: 1.0
+    step_eps: 0.25
+    dual_lr: 0.05
+    lambda_init: 1.0
+    push_linear: true
+    linear_min_gap: 1
+    push_within_clip: false
+    push_weight: 1.0
+    z_group_norm: true
+    scale_init: 1.92
+    lambda_max: 50.0
+loss:
+  sigreg:
+    weight: 0
+step_snapshots:
+  stop: 80000
+  every: 1000

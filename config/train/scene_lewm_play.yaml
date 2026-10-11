@@ -1,0 +1,11 @@
+# scene: LeWM on the play corpus alone (mixture schedule pinned).
+#   MUJOCO_GL=egl python src/train_lewm.py --config-name=scene_lewm_play run_id=scene_lewm_play-1
+defaults:
+- scene_lewm
+- _self_
+data:
+  dataset:
+    name: scene_play
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play.h5
+scheduler:
+  steps_per_epoch: 11125

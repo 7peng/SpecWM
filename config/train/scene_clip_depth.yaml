@@ -1,0 +1,65 @@
+# scene: within-clip depth kernel on the play corpus, predictions as queries.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_clip_depth run_id=scene_clip_depth-1
+defaults:
+- env: scene
+- _self_
+seed: 3072
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-scene-within
+data:
+  dataset:
+    name: scene_play_depth
+    keys_to_load:
+    - pixels
+    - action
+    - qpos
+    - depth_z
+    keys_to_cache:
+    - action
+    - qpos
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play_depth.h5
+    raw_columns:
+    - qpos
+    - depth_z
+trainer:
+  max_epochs: 1
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  spectral:
+    scope: clip
+    weight: 1.0
+    queries: predictions
+    min_live: 0.5
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+    factors:
+    - key: depth_z
+      form: cos
+      sigma: 0.75409
+      weight: 1.0
+      monitor: depth
+step_snapshots:
+  stop: 240000
+  every: 1000

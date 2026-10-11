@@ -1,0 +1,115 @@
+# scene: centering / tempering ablation of the fully specified state kernel: centred and tempered (the paper form).
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_state_ablation_centered_tempered run_id=scene_state_ablation_centered_tempered-1
+defaults:
+- env: scene
+- _self_
+seed: 2
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-scene-within
+data:
+  dataset:
+    name: scene_play_mix_lateonset
+    keys_to_load:
+    - pixels
+    - action
+    - qpos
+    - button_states
+    keys_to_cache:
+    - action
+    - qpos
+    - button_states
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play_mix_lateonset.h5
+    raw_columns:
+    - qpos
+    - button_states
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  spectral:
+    scope: batch
+    weight: 1.0
+    temper:
+      alpha: 0.5
+      modes: 128
+      center: true
+    normalise: relative
+    min_live: 0.5
+    anchor:
+      weight: 0.5
+      stop_gradient: false
+    factors:
+    - name: arm
+      key: qpos
+      slice:
+      - 0
+      - 6
+      form: laplace
+      embed: cos_sin
+      sigma: 1.185996413230896
+      weight: 1.0
+      monitor: arm
+    - name: gripper
+      key: qpos
+      slice:
+      - 6
+      - 14
+      form: laplace
+      sigma: 0.7787848711013794
+      weight: 1.0
+      monitor: gripper
+    - name: cube_xyz
+      key: qpos
+      slice:
+      - 14
+      - 17
+      form: laplace
+      sigma: 0.15482960641384125
+      weight: 1.0
+      monitor: cube_xyz
+    - name: buttons
+      key: button_states
+      form: indicator
+      weight: 1.0
+      monitor: buttons
+    - name: drawer
+      key: qpos
+      dims:
+      - 23
+      form: laplace
+      sigma: 0.061402663588523865
+      weight: 1.0
+      monitor: drawer
+    - name: window
+      key: qpos
+      dims:
+      - 24
+      form: laplace
+      sigma: 0.0838971808552742
+      weight: 1.0
+      monitor: window
+step_snapshots:
+  stop: 240000
+  every: 1000

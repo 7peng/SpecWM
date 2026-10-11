@@ -1,0 +1,11 @@
+# scene: SpecWM temporal kernel on the play corpus alone (mixture schedule pinned).
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_temporal_play run_id=scene_temporal_play-1
+defaults:
+- scene_temporal
+- _self_
+data:
+  dataset:
+    name: scene_play
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play.h5
+scheduler:
+  steps_per_epoch: 66750

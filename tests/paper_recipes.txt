@@ -1,0 +1,47 @@
+# entry recipe [hydra overrides] -- the recipes behind the paper's figures and tables (fingerprinted before and after the cleanup)
+train_lewm cube_lewm
+train_spec cube_quasimetric
+train_spec cube_quasimetric loss.spectral.anchor.stop_gradient=true
+train_spec cube_temporal
+train_spec cube_temporal loss.spectral.anchor.stop_gradient=true
+train_spec cube_teacher
+train_lewm scene_lewm
+train_spec scene_quasimetric
+train_spec scene_quasimetric loss.spectral.anchor.stop_gradient=true
+train_spec scene_temporal
+train_spec scene_temporal loss.spectral.anchor.stop_gradient=true
+train_spec scene_teacher
+train_lewm calvin_lewm
+train_spec calvin_quasimetric
+train_spec calvin_quasimetric loss.spectral.anchor.stop_gradient=true
+train_spec calvin_temporal
+train_spec calvin_temporal loss.spectral.anchor.stop_gradient=true
+train_spec calvin_teacher
+train_spec calvin_temporal_play
+train_spec calvin_temporal_play_sigreg
+train_lewm calvin_lewm_play
+train_lewm scene_lewm_play
+train_lewm cube_lewm_play
+train_spec scene_temporal_play
+train_spec cube_temporal_play
+train_spec scene_full_state
+train_spec scene_full_proprio
+train_spec scene_full_depth
+train_spec scene_clip_state
+train_spec scene_clip_proprio
+train_spec scene_clip_depth
+train_spec scene_clip_temporal
+train_spec scene_clip_quasimetric
+train_spec scene_state_ablation_centered_tempered
+train_spec scene_table1_full_proprio
+train_spec scene_table1_full_depth
+train_spec scene_table1_clip_state
+train_spec scene_table1_clip_proprio
+train_spec scene_table1_clip_depth
+train_spec scene_state_ablation_tempered
+train_spec scene_state_ablation_centered
+train_spec scene_state_ablation_raw
+train_spec calvin_state_ablation_centered_tempered
+train_spec calvin_state_ablation_raw
+train_spec calvin_state_ablation_centered
+train_spec calvin_state_ablation_tempered

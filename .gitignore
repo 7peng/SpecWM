@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# environments
+.venv
+.env
+
+# training and evaluation artifacts (regenerable)
+outputs/
+wandb/
+checkpoints/
+datasets/
+lightning_logs/
+environment*.json
+requirements_frozen*.txt
+wandb_resume.json*
+*.pt
+*.ckpt
+*.npz
+*.npy
+*.mp4
+*.gif
+*.out
+*.log
+MUJOCO_LOG.TXT
+results/_regr/
+results/paper/battery/snaps/
+
+# editors and tooling
+.vscode/
+.idea/
+.DS_Store
+.nfs*

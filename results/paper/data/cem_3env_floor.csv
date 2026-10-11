@@ -1,0 +1,4 @@
+env,offset,random_policy,source
+scene,25,21,results/scene-floor-random-v3
+cube,25,13,results/cube-floor-random
+calvin,50,17,results/calvin-floor-random

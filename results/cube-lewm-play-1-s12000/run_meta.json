@@ -1,0 +1,31 @@
+{
+ "arm": "cube-lewm-play-1-s12000",
+ "policy": "lewm/cube-lewm-play-1/weights_step_12000.pt",
+ "mode": "delta",
+ "action_block": 5,
+ "ckpt_sha256_16": "d6b9650498ae6f7d",
+ "git_sha": "b8b75b2826345d1b53823f54f5826dfc8f53ea9d",
+ "git_dirty": 75,
+ "date": "2026-09-25T10:12:05.115258",
+ "extra": [],
+ "protocol": "ICLR-scene-cem-v3",
+ "eval_config": "cube",
+ "batches": 1,
+ "stats_dataset": "cube_play",
+ "dataset_override": null,
+ "stablewm_home": "${STABLEWM_HOME}",
+ "action_stats": {
+  "name": "cube_play",
+  "path": "${STABLEWM_HOME}/datasets/cube_play.h5",
+  "bytes": 35546282353,
+  "mtime": "2026-09-25T00:10:40.671493"
+ },
+ "task_sets": {
+  "25": {
+   "name": "cube_offset_tasks_O25",
+   "path": "${STABLEWM_HOME}/datasets/cube_offset_tasks_O25.h5",
+   "bytes": 93525889,
+   "mtime": "2026-09-05T03:23:26.729053"
+  }
+ }
+}

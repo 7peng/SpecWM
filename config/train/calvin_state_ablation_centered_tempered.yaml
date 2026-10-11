@@ -1,0 +1,184 @@
+# calvin: centering / tempering ablation of the fully specified state kernel: centred and tempered (the paper form).
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=calvin_state_ablation_centered_tempered run_id=calvin_state_ablation_centered_tempered-1
+defaults:
+- env: calvin
+- _self_
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-calvin-within
+data:
+  dataset:
+    name: calvin_abc_d_mix_lateonset
+    path: ${oc.env:CALVIN_STAGE_DIR}/calvin_abc_d_mix_lateonset.h5
+    keys_to_load:
+    - pixels
+    - action
+    - scene_obs
+    - robot_obs
+    - scene_id
+    - ep_idx
+    - step_idx
+    keys_to_cache:
+    - action
+    - scene_obs
+    - robot_obs
+    - scene_id
+    - ep_idx
+    - step_idx
+    raw_columns:
+    - scene_obs
+    - robot_obs
+    - scene_id
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  spectral:
+    scope: batch
+    weight: 1.0
+    temper:
+      alpha: 0.5
+      modes: 128
+      center: true
+    normalise: relative
+    min_live: 0.5
+    anchor:
+      weight: 0.5
+      stop_gradient: false
+    factors:
+    - name: tcp_pos
+      key: robot_obs
+      slice:
+      - 0
+      - 3
+      form: laplace
+      sigma: 0.282
+      weight: 1.0
+    - name: gripper
+      key: robot_obs
+      dims:
+      - 6
+      form: laplace
+      sigma: 0.0391
+      weight: 1.0
+    - name: joints
+      key: robot_obs
+      slice:
+      - 7
+      - 14
+      form: laplace
+      embed: cos_sin
+      sigma: 1.2956
+      weight: 1.0
+    - name: red_xyz
+      key: scene_obs
+      slice:
+      - 6
+      - 9
+      form: laplace
+      sigma: 0.2218
+      weight: 1.0
+    - name: red_rot
+      key: scene_obs
+      slice:
+      - 9
+      - 12
+      form: laplace
+      embed: cos_sin
+      sigma: 1.9989
+      weight: 1.0
+    - name: blue_xyz
+      key: scene_obs
+      slice:
+      - 12
+      - 15
+      form: laplace
+      sigma: 0.2166
+      weight: 1.0
+    - name: blue_rot
+      key: scene_obs
+      slice:
+      - 15
+      - 18
+      form: laplace
+      embed: cos_sin
+      sigma: 1.9778
+      weight: 1.0
+    - name: pink_xyz
+      key: scene_obs
+      slice:
+      - 18
+      - 21
+      form: laplace
+      sigma: 0.234
+      weight: 1.0
+    - name: pink_rot
+      key: scene_obs
+      slice:
+      - 21
+      - 24
+      form: laplace
+      embed: cos_sin
+      sigma: 2.001
+      weight: 1.0
+    - name: slider
+      key: scene_obs
+      dims:
+      - 0
+      form: laplace
+      sigma: 0.0923
+      weight: 1.0
+    - name: drawer
+      key: scene_obs
+      dims:
+      - 1
+      form: laplace
+      sigma: 0.0947
+      weight: 1.0
+    - name: switch
+      key: scene_obs
+      dims:
+      - 3
+      form: laplace
+      sigma: 0.0326
+      weight: 1.0
+    - name: lightbulb
+      key: scene_obs
+      dims:
+      - 4
+      form: indicator
+      weight: 1.0
+    - name: green_light
+      key: scene_obs
+      dims:
+      - 5
+      form: indicator
+      weight: 1.0
+    - name: scene
+      key: scene_id
+      form: indicator
+      weight: 1.0
+step_snapshots:
+  stop: 240000
+  every: 1000

@@ -1,0 +1,11 @@
+run_id,kind,status,steps,artifact_used,notes,artifact_exists
+calvin-qrl-linear-fs10-mixlate-2,quasimetric teacher,complete,9500,${STABLEWM_HOME}/checkpoints/lewm/calvin-qrl-linear-fs10-mixlate-2/step_snaps/step_9000.pt,seed 2; sigma_near=3.3229503632; sigma_far=10.6932172775,True
+calvin-qrl-linear-fs10-mixlate-3,quasimetric teacher,complete,9500,${STABLEWM_HOME}/checkpoints/lewm/calvin-qrl-linear-fs10-mixlate-3/step_snaps/step_9000.pt,seed 3; sigma_near=3.4983630180; sigma_far=11.1793117523,True
+calvin-mixlate-lag-det-1,superseded student,stopped/replaced,,,clip-only temporal detached run; replaced by far-frame detached run; excluded from scoring,False
+calvin-mixlate-lag-det-2,superseded student,stopped/replaced,,,clip-only temporal detached run; replaced by far-frame detached run; excluded from scoring,False
+calvin-mixlate-lag-det-3,superseded student,stopped/replaced,,,clip-only temporal detached run; replaced by far-frame detached run; excluded from scoring,False
+cube-lewm-play-1,student,canceled,,,explicitly canceled by user; no CEM/probe result,False
+calvin-lewm-mixlate-1,earlier handoff student,reported complete; artifact absent here,,,not part of the 13-run overnight scoring scope,False
+calvin-mixlate-far-1,earlier handoff student,reported complete; artifact absent here,,,not part of the 13-run overnight scoring scope,False
+calvin-mixlate-lag-far-4/-5/-6,earlier handoff students,reported complete; artifacts absent here,,,prior temporal far-frame runs; not part of the 13-run overnight scoring scope,False
+calvin-floor-random,random floor,reported complete; artifact absent here,,,no local result artifact found; do not infer a score,False

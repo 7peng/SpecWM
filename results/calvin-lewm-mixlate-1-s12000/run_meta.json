@@ -1,0 +1,31 @@
+{
+ "arm": "calvin-lewm-mixlate-1-s12000",
+ "policy": "lewm/calvin-lewm-mixlate-1/weights_step_12000.pt",
+ "mode": "delta",
+ "action_block": 10,
+ "ckpt_sha256_16": "2f403359068f1139",
+ "git_sha": "51297767cfacb4ebeb8ae49a4099511508adc3cd",
+ "git_dirty": 73,
+ "date": "2026-09-21T06:28:17.817732",
+ "extra": [],
+ "protocol": "ICLR-scene-cem-v3",
+ "eval_config": "calvin",
+ "batches": 1,
+ "stats_dataset": "calvin_abc_d_mix_lateonset",
+ "dataset_override": null,
+ "stablewm_home": "${STABLEWM_HOME}",
+ "action_stats": {
+  "name": "calvin_abc_d_mix_lateonset",
+  "path": "${STABLEWM_HOME}/datasets/calvin_abc_d_mix_lateonset.h5",
+  "bytes": 431570376240,
+  "mtime": "2026-09-20T18:06:53.442722"
+ },
+ "task_sets": {
+  "50": {
+   "name": "calvin_offset_tasks_O50",
+   "path": "${STABLEWM_HOME}/datasets/calvin_offset_tasks_O50.h5",
+   "bytes": 560974312,
+   "mtime": "2026-09-06T01:22:17.809775"
+  }
+ }
+}

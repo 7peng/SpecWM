@@ -1,0 +1,6 @@
+env,run,step,pack,obj,obj_ood,n_cells,cell:id/C100/object_0:cube,cell:id/C101/object_0:cube
+scene,random-init,0,probe_pack_ogbench_v2/scene,0.790037737905815,,2,0.794199756840528,0.7858757189711021
+scene,scene-lewm-mixlate-1,-1,probe_pack_ogbench_v2/scene,0.8244716197804767,,2,0.827456264379229,0.8214869751817243
+scene,scene-mixlate-1,-1,probe_pack_ogbench_v2/scene,0.9012242401980388,,2,0.9092013632283521,0.8932471171677256
+scene,scene-mixlate-det-1,-1,probe_pack_ogbench_v2/scene,0.8786735525522349,,2,0.8772305240756928,0.880116581028777
+scene,scene-mixlate-lag-1,-1,probe_pack_ogbench_v2/scene,0.7978659536283192,,2,0.7952176380722087,0.8005142691844297
