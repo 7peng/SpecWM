@@ -275,7 +275,8 @@ def _pred_anchor_term(sd_cfg, output, emb, pred_emb, posframe):
 def _direct_gram_within_term(sd_cfg, output, emb, Kb, live, pred_emb, posframe, Gabs, mon):
     """The within-clip kernel term on the encoder rows: per clip, the centred block MSE of the unit rows'
     cosine Gram against the absolute kernel (`score_diagonal` scores the self pairs too), plus
-    the prediction anchor. Monitors the per-clip correlation with K* and with each named voice."""
+    the prediction anchor. `rescale_rows` scales each unit row to the square root of the centred target's
+    diagonal before the Gram (Equation 6 at alpha = 1). Monitors the per-clip correlation with K* and with each named voice."""
     B, N, D = emb.shape
     with torch.autocast(emb.device.type, enabled=False):
         m = 1.0 - torch.eye(N, device=emb.device, dtype=torch.float32)
@@ -288,7 +289,11 @@ def _direct_gram_within_term(sd_cfg, output, emb, Kb, live, pred_emb, posframe, 
             for _nm, _Km in mon.items():
                 output[f"gram_corr_{_nm}"] = _block_corr(S.detach(), _block_ctr(_Km.detach().float(), m), m, live)
         cm = m + torch.eye(N, device=emb.device, dtype=m.dtype) if bool(sd_cfg.get("score_diagonal", False)) else m
-        l = _cmse_blocks(_block_ctr(S, cm), _block_ctr(Gabs.detach().float(), cm), cm, live,
+        Kc = _block_ctr(Gabs.detach().float(), cm)
+        if bool(sd_cfg.get("rescale_rows", False)):
+            hb = h * torch.diagonal(Kc, dim1=-2, dim2=-1).clamp_min(0).sqrt()[..., None]
+            S = hb @ hb.mT
+        l = _cmse_blocks(_block_ctr(S, cm), Kc, cm, live,
                          output, "gram_std_within", "kern_std_within", min_live=float(sd_cfg.get("min_live", 0.5)))
         output["spec_loss"] = l.detach()
         loss = float(sd_cfg.get("weight", 1.0)) * l
@@ -354,6 +359,36 @@ def _direct_gram_batch_term(sd_cfg, output, emb, pred_emb, posframe, G):
             output["gram_corr_batch"] = (sc * tc).sum() / (sc.norm() * tc.norm()).clamp_min(1e-12)
             output["spec_target_rank"] = (torch.linalg.eigvalsh(T) > 1e-6 * n).sum().float()
     return float(sd_cfg.get("weight", 1.0)) * e + _pred_anchor_term(sd_cfg, output, emb, pred_emb, posframe)
+
+
+def _crl_term(cr_cfg, output, emb, pred_emb, posframe):
+    """Contrastive RL with one shared state/goal representation (OGBench CRL's binary NCE, phi = psi = the
+    encoder row, no action input). Every frame but a clip's last is an anchor; its positive is a later frame
+    of the same clip at offset 1 + Geometric(1 - `discount`), capped at the clip end. Logits h_a . h_g / sqrt(d)
+    over all anchor-goal pairs; each anchor's own goal is labelled 1, goals of other clips 0, goals of its own
+    clip are left out. Plus the prediction anchor."""
+    B, N, D = emb.shape
+    with torch.no_grad():
+        t = torch.arange(N - 1, device=emb.device).expand(B, N - 1)
+        off = torch.distributions.Geometric(probs=torch.tensor(1.0 - float(cr_cfg["discount"]), device=emb.device)).sample(t.shape).long() + 1
+        gt = torch.minimum(t + off, torch.full_like(t, N - 1))
+        clip = torch.arange(B, device=emb.device).repeat_interleave(N - 1)
+        lab = torch.eye(B * (N - 1), device=emb.device)
+        keep = (clip[:, None] != clip[None, :]) | lab.bool()
+    with torch.autocast(emb.device.type, enabled=False):
+        e = emb.float()
+        anc = e[:, :N - 1].reshape(B * (N - 1), D)
+        goal = e[torch.arange(B, device=emb.device)[:, None], gt].reshape(B * (N - 1), D)
+        logits = anc @ goal.T / D ** 0.5
+        bce = F.binary_cross_entropy_with_logits(logits, lab, reduction="none")
+        l = (bce * keep).sum() / keep.sum()
+        with torch.no_grad():
+            masked = logits.masked_fill(~keep, float("-inf"))
+            output["crl_loss"] = l.detach()
+            output["crl_categorical_acc"] = (masked.argmax(1) == torch.arange(len(lab), device=emb.device)).float().mean()
+            output["crl_logits_pos"] = logits.diagonal().mean()
+            output["crl_logits_neg"] = (logits * (keep & ~lab.bool())).sum() / (keep & ~lab.bool()).sum()
+    return float(cr_cfg.get("weight", 1.0)) * l + _pred_anchor_term(cr_cfg, output, emb, pred_emb, posframe)
 
 
 def _spectral_term(mod, sd_cfg, output, batch, emb, pred_emb, posframe, far=None):
@@ -433,7 +468,7 @@ def _multistart_index(starts, hors, H, N, max_ph, device):
 def temporal_forward(self, batch, stage, cfg):
     """Encode the clip, predict every reachable (start, horizon) frame from its history, and sum the
     objective: SIGReg at its weight (a monitor at 0), the live quasimetric head of a teacher run, and the
-    kernel term with its prediction anchor."""
+    kernel term (loss.spectral) or the contrastive RL term (loss.crl) with its prediction anchor."""
     cfg = _step_cfg(self, cfg)
     H, Tm = cfg.wm.history_size, cfg.wm.num_preds
     sw = cfg.loss.sigreg.weight
@@ -508,6 +543,10 @@ def temporal_forward(self, batch, stage, cfg):
         output["loss"] = output["loss"] + float(qk_cfg.get("weight", 1.0)) * output["quasimetric_loss"]
     if sd_cfg is not None:
         output["loss"] = output["loss"] + _spectral_term(self, sd_cfg, output, batch, emb, pred_emb, posframe, far)
+    cr_cfg = cfg.loss.get("crl", None)
+    if cr_cfg is not None:
+        assert sd_cfg is None and not n_far, "loss.crl replaces loss.spectral; far frames are not used by it"
+        output["loss"] = output["loss"] + _crl_term(cr_cfg, output, emb, pred_emb, posframe)
 
     train_common.log_step_metrics(self, output, emb, stage)
     return output

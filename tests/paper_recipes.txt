@@ -45,3 +45,4 @@ train_spec calvin_state_ablation_centered_tempered
 train_spec calvin_state_ablation_raw
 train_spec calvin_state_ablation_centered
 train_spec calvin_state_ablation_tempered
+train_spec scene_crl
