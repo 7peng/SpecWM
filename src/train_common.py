@@ -22,7 +22,7 @@ from utils import (RowReadHDF5Dataset, get_column_normalizer,
                    PickleableHDF5Wrapper, StepLossLogger, LightningCkptPointer,
                    find_resume_ckpt)
 
-from utils import classify_columns
+from utils import batch_step, classify_columns
 
 load_env()
 
@@ -76,7 +76,7 @@ class _ValMetricLogger(Callback):
             with open(path, "a") as f:
                 if new:
                     f.write("step,epoch," + ",".join(k.split("/")[-1] for k in self.keys) + "\n")
-                f.write(f"{int(trainer.global_step)},{int(trainer.current_epoch)}," +
+                f.write(f"{batch_step(trainer)},{int(trainer.current_epoch)}," +
                         ",".join(f"{g(k):.6f}" for k in self.keys) + "\n")
         except Exception as e:
             print(f"[val_log] write failed: {e}", flush=True)
@@ -200,8 +200,7 @@ def log_step_metrics(self, output, emb, stage):
                "spec_mse", "spec_target_rank", "pred_cos", "pred_anchor_cos"):
         if _k in output:
             losses_dict[f"{stage}/{_k}"] = output[_k].detach()
-    losses_dict[f"{stage}/batch"] = torch.full(
-        (), float(int(getattr(self, "global_step", 0) or 0)), device=emb.device)
+    losses_dict[f"{stage}/batch"] = torch.full((), float(batches_done(self)), device=emb.device)
     # one collective for the whole dict, not one per metric
     self.log_dict(reduce_metrics_once(losses_dict), on_step=True, sync_dist=False)
 
@@ -232,6 +231,11 @@ def reduce_metrics_once(metrics):
     if op == dist.ReduceOp.SUM:
         stacked /= dist.get_world_size()
     return dict(zip(keys, stacked.unbind(0)))
+
+
+def n_optimizers(cfg):
+    """Optimizer groups the run builds: the model group, plus `head_optim` when set."""
+    return 1 + int(cfg.get("head_optim", None) is not None)
 
 
 def batches_done(pl_module):
@@ -337,7 +341,7 @@ def _build_callbacks(cfg, world_model, dataset, run_id, run_dir, ckpt_dir_pointe
         from lightning.pytorch.callbacks import ModelCheckpoint
         callbacks.insert(0, ModelCheckpoint(
             dirpath=str(Path(swm.data.utils.get_cache_dir(), "checkpoints", cfg.output_model_name, run_id, "lightning")),
-            filename="{epoch}-{step}", every_n_train_steps=_fc, save_top_k=1,
+            filename="{epoch}-{step}", every_n_train_steps=_fc * n_optimizers(cfg), save_top_k=1,
             save_on_train_epoch_end=True, enable_version_counter=False))
 
     _ss = cfg.get("step_snapshots", None)
@@ -456,7 +460,10 @@ def run(cfg, forward_fn, build_loss_modules, *, gpu_norm):
         val_set = torch.utils.data.Subset(dataset, np.flatnonzero(is_val).tolist())
         print(f"==> val split by EPISODE: {len(uniq) - n_val_ep} fit / {n_val_ep} val episodes "
               f"({len(train_set)} / {len(val_set)} clips) [seeded perm, seed {split_seed}]")
+        if getattr(dataset, "goal_n", 0):
+            dataset.goal_episodes = sorted(int(e) for e in uniq if e not in val_eps)
     else:
+        assert not getattr(dataset, "goal_n", 0), "data.dataset.goal_pairs samples fitting episodes: set val_split_by_episode"
         train_set, val_set = spt.data.random_split(
             dataset, lengths=[cfg.train_split, 1 - cfg.train_split], generator=rnd_gen)
     train_set = PickleableHDF5Wrapper(train_set)
@@ -626,6 +633,16 @@ def run(cfg, forward_fn, build_loss_modules, *, gpu_norm):
             "interval": "step",
         },
     }
+    ho = cfg.get("head_optim", None)
+    if ho is not None:
+        optimizers["head_opt"] = {
+            "modules": str(ho.modules),
+            "optimizer": OmegaConf.to_container(ho.optimizer, resolve=True),
+            "scheduler": {"type": "ConstantLR", "factor": 1.0, "total_iters": 0},
+            "interval": "step",
+        }
+
+    assert len(optimizers) == n_optimizers(cfg), f"{len(optimizers)} optimizer groups, n_optimizers(cfg)={n_optimizers(cfg)}"
 
     data_module = spt.data.DataModule(train=train, val=val)
     fwd = lambda *args, **kwargs: forward_fn(cfg=cfg, *args, **kwargs)
@@ -698,6 +715,9 @@ def run(cfg, forward_fn, build_loss_modules, *, gpu_norm):
     callbacks = _build_callbacks(cfg, world_model, dataset, run_id, run_dir,
                                  ckpt_dir_pointer, aux_names)
     trainer_kwargs = dict(cfg.trainer)
+    # Lightning's max_steps counts optimizer steps; trainer.max_steps in the config counts batches
+    if int(trainer_kwargs.get("max_steps", -1) or -1) > 0 and n_optimizers(cfg) > 1:
+        trainer_kwargs["max_steps"] = int(trainer_kwargs["max_steps"]) * n_optimizers(cfg)
     # spt runs manual optimization and never divides the loss by the accumulation count
     _acc = int(trainer_kwargs.get("accumulate_grad_batches", 1) or 1)
     assert _acc == 1, (

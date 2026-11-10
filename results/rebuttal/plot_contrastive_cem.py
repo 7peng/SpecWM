@@ -1,0 +1,63 @@
+"""Rebuttal figure: CEM success on OGBench Scene (100 tasks, goal offset 25) for the contrastive baselines against
+LeWM and SpecWM (temporal). Every run is the mean of its 20k/24k/28k cells; a bar is the mean over the scored seeds,
+whisker one standard deviation when there are two or more, dots the individual seeds. Arms with fewer than three
+scored seeds are labelled with their seed count.
+    python results/rebuttal/plot_contrastive_cem.py OUT.png"""
+import re, sys
+from pathlib import Path
+import numpy as np
+import pandas as pd
+import matplotlib; matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "results" / "paper" / "scripts"))
+import style as S  # noqa: E402
+
+D = ROOT / "results" / "paper" / "data"
+f = pd.read_csv(D / "finals_seeds.csv"); f = f[f.env == "scene"]
+floor = float(pd.read_csv(D / "cem_3env_floor.csv").set_index("env").loc["scene", "random_policy"])
+
+
+def run_mean(run):
+    v = []
+    for s in (20000, 24000, 28000):
+        p = ROOT / "results" / f"{run}-s{s}" / "O25.txt"
+        m = re.search(r"success_rate'?:\s*([0-9.]+)", p.read_text()) if p.exists() else None
+        if not m:
+            return None
+        v.append(float(m.group(1)))
+    return float(np.mean(v))
+
+
+def seeds(runs):
+    return np.array([x for x in (run_mean(r) for r in runs) if x is not None])
+
+
+ARMS = [("Random", np.array([floor]), S.RANDOM, None),
+        ("LeWM", f[f.arm == "sigreg"].mean_20k_30k.to_numpy(), S.LEWM, None),
+        ("CRL", seeds(["scene-crl-heads-3", "scene-crl-heads-s2", "scene-crl-heads-s3"]), S.tint(S.QUASIMETRIC, 0.35), "////"),
+        ("Temporal\nInfoNCE", seeds(["scene-crl-infonce-within-2", "scene-crl-infonce-within-s2", "scene-crl-infonce-within-s3"]), S.QUASIMETRIC, "////"),
+        ("SpecWM\n(temporal)", f[f.arm == "temporal"].mean_20k_30k.to_numpy(), S.TEMPORAL, None)]
+
+S.apply()
+PANEL_W = 0.935 / (3 + 2 * 0.07)
+pw = PANEL_W * S.FULL * 1.15; fig = plt.figure(figsize=(pw + 1.0, 4.6))
+ax = fig.add_axes([0.8 / (pw + 1.0), 0.19, pw / (pw + 1.0), 0.71])
+W, G = 0.94, 0.48
+xs = [i * (W + G) for i in range(len(ARMS))]
+labels = []
+for x, (lab, v, c, hatch) in zip(xs, ARMS):
+    val = float(v.mean())
+    ax.bar(x, val, W - S.PAIR_GAP, color=c, edgecolor=S.tint(c) if hatch else "none", linewidth=0, hatch=hatch, zorder=3)
+    top = val
+    if len(v) > 1:
+        sd = float(v.std(ddof=1)); S.whisker(ax, x, val - sd, val + sd); top = val + sd
+    if lab != "Random":
+        ax.scatter(x + np.linspace(-0.22, 0.22, len(v)) if len(v) > 1 else [x], v, s=12, color="#333333", zorder=6)
+        top = max(top, float(v.max()))
+    S.value(ax, x, top + 1.6, f"{val:.0f}")
+    labels.append(lab + (f"\n({len(v)} seed{'s' if len(v) > 1 else ''})" if lab != "Random" and len(v) < 3 else ""))
+    print(lab.replace("\n", " "), np.round(v, 1).tolist(), round(val, 1))
+ax.set_xticks(xs, labels, fontsize=S.VALUE_SMALL); ax.set_xlim(-0.72, xs[-1] + 0.72)
+S.clean(ax, yticks=range(0, 101, 20), ylim=(0, 100)); S.title(ax, "OGBench Scene"); S.ylabel(ax, "Success (%)")
+S.save(fig, sys.argv[1]); fig.savefig(Path(sys.argv[1]).with_suffix(".pdf"), facecolor="white")

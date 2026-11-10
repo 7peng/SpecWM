@@ -1,6 +1,8 @@
-# scene: contrastive RL baseline (OGBench CRL binary NCE, one shared state/goal encoder, no actions) in place of the
-# spectral term; positives at a geometric offset within the clip, discount matched to the temporal kernel (exp(-1/7)).
-#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_crl run_id=scene_crl-1
+# scene: temporal InfoNCE on one shared representation with within-clip negatives: every frame but a clip's last is an
+# anchor, its positive 1 + Geometric(1 - 0.8669) frames later drawn from that law truncated to the clip, its negatives
+# every other goal in the batch (its own clip's included, less goals at its own frame or its positive's frame); softmax
+# on h_a . h_g / sqrt(d), no heads, no actions. Same clips and images per update as SpecWM.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_crl_infonce_within run_id=scene_crl_infonce_within-1
 defaults:
 - env: scene
 - _self_
@@ -48,7 +50,10 @@ loss:
     weight: 0
   crl:
     weight: 1.0
+    form: infonce
     discount: 0.8669
+    positives: truncated
+    negatives: all
     anchor:
       weight: 2.0
       stop_gradient: false

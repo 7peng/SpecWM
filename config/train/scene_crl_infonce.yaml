@@ -1,0 +1,59 @@
+# scene: contrastive RL baseline with one shared state/goal representation: InfoNCE (softmax over each anchor's
+# goals from other clips) on h_a . h_g / sqrt(d), no heads, no actions; positives at a geometric offset within the
+# clip, discount matched to the temporal kernel (exp(-1/7)).
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_crl_infonce run_id=scene_crl_infonce-1
+defaults:
+- env: scene
+- _self_
+seed: 3072
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+wandb:
+  config:
+    project: lewm-scene-within
+data:
+  dataset:
+    name: scene_play_mix_lateonset
+    keys_to_load:
+    - pixels
+    - action
+    - qpos
+    keys_to_cache:
+    - action
+    - qpos
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play_mix_lateonset.h5
+    raw_columns:
+    - qpos
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  crl:
+    weight: 1.0
+    form: infonce
+    discount: 0.8669
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+step_snapshots:
+  stop: 240000
+  every: 1000

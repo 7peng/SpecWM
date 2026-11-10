@@ -62,6 +62,21 @@ class GPUPixelNormalize(torch.nn.Module):
         return x.sub_(self.mean).div_(self.std), None
 
 
+def sample_goal_pairs(lengths, episodes, n, discount, gen=None):
+    """OGBench GCDataset goal sampling: n anchors uniform over the frames of `episodes` (each frame but an
+    episode's last), each goal 1 + Geometric(1 - discount) raw frames later in the same episode, capped at
+    the episode's last frame. Returns (episode, anchor frame, goal frame) as int64 tensors."""
+    eps = torch.as_tensor(episodes, dtype=torch.int64)
+    L = torch.as_tensor(lengths, dtype=torch.int64)[eps]
+    w = (L - 1).clamp_min(0).double()
+    pick = torch.multinomial(w, n, replacement=True, generator=gen)
+    ep, Lp = eps[pick], L[pick]
+    t = (torch.rand(n, generator=gen, dtype=torch.float64) * (Lp - 1).double()).long()
+    u = torch.rand(n, generator=gen, dtype=torch.float64).clamp_min(1e-12)
+    k = (torch.log(u) / math.log(float(discount))).floor().long() + 1      # P(k) = (1 - g) g^(k-1), k >= 1
+    return ep, t, torch.minimum(t + k, Lp - 1)
+
+
 class RowReadHDF5Dataset(_SwmHDF5Dataset):
     """swm's HDF5Dataset with a per-row read for columns chunked one frame per chunk, a clip table
     whose last kept frame lies inside the episode, and optional far frames.
@@ -72,11 +87,15 @@ class RowReadHDF5Dataset(_SwmHDF5Dataset):
 
     `far_frames` extra rows per clip are drawn from the same episode, |gap| log-uniform in
     `far_gap` raw frames from the clip centre, and appended after the contiguous clip (no action
-    rows)."""
+    rows). `goal_pairs: {n, discount}` appends n anchor rows then their n goal rows after those
+    (`sample_goal_pairs` over `goal_episodes`, which the split sets to the fitting episodes)."""
 
     def __init__(self, *a, **k):
         self.far_frames = int(k.pop("far_frames", 0) or 0)
         self.far_gap = tuple(k.pop("far_gap", (300, 3000)))
+        gp = k.pop("goal_pairs", None) or {}
+        self.goal_n, self.goal_discount = int(gp.get("n", 0) or 0), float(gp.get("discount", 0.99))
+        self.goal_episodes = None
         super().__init__(*a, **k)
         self._row_read_cols = {}
         # the final frame's action block is zero-padded past the episode end in _load_slice
@@ -89,7 +108,7 @@ class RowReadHDF5Dataset(_SwmHDF5Dataset):
         self.clip_indices = kept
 
     def __getitem__(self, idx):
-        if not self.far_frames:
+        if not self.far_frames and not self.goal_n:
             return super().__getitem__(idx)
         # the far rows join the raw clip before the transform, so both pass through it together
         ep_idx, start = self.clip_indices[idx]
@@ -98,7 +117,13 @@ class RowReadHDF5Dataset(_SwmHDF5Dataset):
             steps = self._load_slice(ep_idx, start, start + self.span)
         finally:
             self.transform = tf
-        self._append_far(steps, ep_idx, start)
+        if self.far_frames:
+            self._append_far(steps, ep_idx, start)
+        if self.goal_n:
+            assert self.goal_episodes is not None, "goal_pairs needs goal_episodes (set by the split)"
+            ep, t, g = sample_goal_pairs(self.lengths, self.goal_episodes, self.goal_n, self.goal_discount)
+            off = torch.as_tensor(np.asarray(self.offsets), dtype=torch.int64)[ep]
+            self._append_rows(steps, torch.cat([off + t, off + g]).tolist())
         steps = tf(steps) if tf else steps
         if "action" in steps:
             steps["action"] = steps["action"].reshape(self.num_steps, -1)
@@ -115,7 +140,10 @@ class RowReadHDF5Dataset(_SwmHDF5Dataset):
             top = max(lo, min(hi, room[s]))
             gap = math.exp(torch.empty(()).uniform_(math.log(lo), math.log(top)).item())
             t.append(int(min(max(round(centre + s * gap), 0), L - 1)))
-        rows = sorted(int(self.offsets[ep_idx]) + x for x in t)
+        self._append_rows(steps, sorted(int(self.offsets[ep_idx]) + x for x in t))
+
+    def _append_rows(self, steps, rows):
+        """Append the given global rows of every non-action column, in order."""
         for col in self._keys:
             if col == "action" or col not in steps or not torch.is_tensor(steps[col]):
                 continue
@@ -301,6 +329,16 @@ class AuxStateCallback(Callback):
         tmp.rename(out / f"heads_epoch_{epoch}.pt")
 
 
+def batch_step(trainer):
+    """Batches done: Lightning's global_step advances once per optimizer step, so with N optimizer
+    groups it runs N x the batch count."""
+    try:
+        n = max(1, len(trainer.optimizers))
+    except Exception:
+        n = 1
+    return int(trainer.global_step) // n
+
+
 def strip_orig_mod(state_dict):
     """Remove the `._orig_mod` segment torch.compile inserts into state_dict keys."""
     return {k.replace('._orig_mod', ''): v for k, v in state_dict.items()}
@@ -432,7 +470,7 @@ class StepLossLogger(Callback):
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         if not trainer.is_global_zero:
             return
-        gs = int(trainer.global_step)
+        gs = batch_step(trainer)
         if gs == 0 or gs % self.every != 0:
             return
         cm = trainer.callback_metrics

@@ -75,6 +75,7 @@ def main():
     ap.add_argument("--out", default=os.environ["CALVIN_STAGE_DIR"])
     ap.add_argument("--workers", type=int, default=24)
     ap.add_argument("--block", type=int, default=2000, help="frames per worker task")
+    ap.add_argument("--scene", choices=("A", "B", "C", "D"), default=None, help="the scene of a split without scene_info.npy")
     args = ap.parse_args()
 
     # the block permutation is a claim about calvin_env's scene configs; check it when reachable
@@ -93,13 +94,18 @@ def main():
     N = len(ids)
     ep_idx = np.repeat(np.arange(len(eps), dtype=np.int32), ep_len)
     step_idx = np.concatenate([np.arange(l, dtype=np.int64) for l in ep_len])
-    # scene A/B/C per frame, from the split's scene_info (inclusive frame-id ranges)
-    scene_info = np.load(src / "scene_info.npy", allow_pickle=True).item()
+    # scene per frame, from the split's scene_info (inclusive frame-id ranges); a split shipped without one
+    # (task_ABC_D/validation is scene D throughout) names its scene with --scene
     scene_id = np.full((N, 1), -1, np.int64)
-    for k, name in enumerate(("calvin_scene_A", "calvin_scene_B", "calvin_scene_C", "calvin_scene_D")):
-        if name in scene_info:
-            a, b = scene_info[name]
-            scene_id[(ids >= a) & (ids <= b)] = k
+    if args.scene:
+        assert not (src / "scene_info.npy").exists(), "the split has a scene_info.npy; drop --scene"
+        scene_id[:] = R.SCENE_IDS[args.scene]
+    else:
+        scene_info = np.load(src / "scene_info.npy", allow_pickle=True).item()
+        for k, name in enumerate(("calvin_scene_A", "calvin_scene_B", "calvin_scene_C", "calvin_scene_D")):
+            if name in scene_info:
+                a, b = scene_info[name]
+                scene_id[(ids >= a) & (ids <= b)] = k
     assert (scene_id >= 0).all(), "frames outside every scene range"
     missing = [f for f in ids[:: max(1, N // 2000)]
                if not (src / f"episode_{int(f):07d}.npz").exists()]
@@ -108,7 +114,7 @@ def main():
           f"({N * H * W * 3 / 1e9:.0f} GB of pixels)", flush=True)
 
     Path(args.out).mkdir(parents=True, exist_ok=True)
-    dst = Path(args.out) / f"calvin_abc_d{'' if args.split == 'training' else '_val'}.h5"
+    dst = Path(args.out) / f"calvin_abc_d{'' if args.split == 'training' else '_' + (args.scene or 'val')}.h5"
     blocks = [(str(src), ids[i:i + args.block]) for i in range(0, N, args.block)]
 
     t0 = time.time()

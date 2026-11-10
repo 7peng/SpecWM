@@ -1,0 +1,74 @@
+# scene: contrastive RL baseline, OGBench CRL's value critic on our encoder: separate phi and psi heads (their
+# GCBilinearValue MLPs, Adam 3e-4 as theirs) on the shared encoder row, their binary NCE summed over each anchor's goals
+# (OGBench's pair mean is the same objective up to a constant under Adam), no actions. Pairs follow OGBench's GCDataset:
+# 11 per clip (264 per update), anchors uniform over the fitting episodes' frames, goals 1 + Geometric(1 - 0.99) env
+# steps later in the same episode (their discount), every other goal in the batch a negative. The 24 clips carry the
+# prediction anchor as in SpecWM; the pairs add 528 images per update.
+#   MUJOCO_GL=egl python src/train_spec.py --config-name=scene_crl_heads run_id=scene_crl_heads-1
+defaults:
+- env: scene
+- _self_
+seed: 3072
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+head_optim:
+  modules: crl_heads
+  optimizer:
+    type: Adam
+    lr: 0.0003
+wandb:
+  config:
+    project: lewm-scene-within
+data:
+  dataset:
+    name: scene_play_mix_lateonset
+    keys_to_load:
+    - pixels
+    - action
+    - qpos
+    keys_to_cache:
+    - action
+    - qpos
+    path: ${oc.env:SCENE_STAGE_DIR}/scene_play_mix_lateonset.h5
+    raw_columns:
+    - qpos
+    goal_pairs:
+      n: 11
+      discount: 0.99
+trainer:
+  max_epochs: 1
+  max_steps: 33375
+scheduler:
+  warmup_epochs: 0.05
+loader:
+  batch_size: 24
+wm:
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  predictor:
+    _target_: networks.ARPredictor
+  projector:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    norm_fn:
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    weight: 0
+  crl:
+    weight: 1.0
+    form: binary
+    reduction: anchor_sum
+    heads:
+      hidden_dims: [512, 512, 512]
+      latent_dim: 512
+      layer_norm: true
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+step_snapshots:
+  stop: 240000
+  every: 1000

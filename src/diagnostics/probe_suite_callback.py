@@ -305,7 +305,7 @@ class ProbeSuiteCallback(Callback):
         if not trainer.is_global_zero:
             return
         self._drain(trainer)
-        step = int(trainer.global_step)
+        step = int(trainer.global_step) // max(1, len(trainer.optimizers))
         if step == self._last or step % self.every_n_steps:
             return
         if self._thread is not None and self._thread.is_alive():

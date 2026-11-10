@@ -54,7 +54,7 @@ def gpu_util(gpu):
 
 
 def taskset(args, offset):
-    return f"{TASKSETS[args.eval_config]}_O{offset}"
+    return f"{args.taskset or TASKSETS[args.eval_config]}_O{offset}"
 
 
 def n_tasks(args, offset):
@@ -214,6 +214,7 @@ def main():
     p.add_argument("--dataset", default=None,
                    help="training corpus name, for a checkpoint without train_meta.json")
     p.add_argument("--batches", type=int, default=1, help="equal in-process batches per offset")
+    p.add_argument("--taskset", default=None, help="task-set family in place of the eval config's, e.g. calvin_offset_tasks_D")
     p.add_argument("extra", nargs="*", default=[])
     args = p.parse_args()
     args.meta = (train_meta(args.policy, dataset=args.dataset)

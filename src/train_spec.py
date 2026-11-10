@@ -6,6 +6,7 @@ the quasimetric teachers (quasimetric_head set, no kernel term).
 
 TEACHER_DUMP=<path.npz> writes one batch of teacher distances and exits (the sigma solve reads it).
 """
+import math
 import os
 from pathlib import Path
 
@@ -16,7 +17,7 @@ import torch.nn.functional as F
 from omegaconf import OmegaConf
 
 import train_common
-from losses import SIGReg, QRLHead
+from losses import SIGReg, QRLHead, CRLHeads
 from quasimetric import FrozenQRLTeacher, distance_affinity
 from utils import GPUPixelNormalize
 
@@ -361,30 +362,79 @@ def _direct_gram_batch_term(sd_cfg, output, emb, pred_emb, posframe, G):
     return float(sd_cfg.get("weight", 1.0)) * e + _pred_anchor_term(sd_cfg, output, emb, pred_emb, posframe)
 
 
-def _crl_term(cr_cfg, output, emb, pred_emb, posframe):
-    """Contrastive RL with one shared state/goal representation (OGBench CRL's binary NCE, phi = psi = the
-    encoder row, no action input). Every frame but a clip's last is an anchor; its positive is a later frame
-    of the same clip at offset 1 + Geometric(1 - `discount`), capped at the clip end. Logits h_a . h_g / sqrt(d)
-    over all anchor-goal pairs; each anchor's own goal is labelled 1, goals of other clips 0, goals of its own
-    clip are left out. Plus the prediction anchor."""
+def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None):
+    """Contrastive RL on the encoder rows. With `pairs` (B, 2n, D), the rows of data.dataset.goal_pairs (n
+    anchors then their n goals per item, OGBench GCDataset sampling), every anchor's positive is its own goal and
+    every other goal in the batch a negative. Without, every frame but a clip's last is an anchor; its positive is
+    a later frame of the same clip at offset 1 + Geometric(1 - `discount`), capped at the clip end (positives=capped)
+    or drawn from that law truncated to the clip (positives=truncated); its negatives are the goals of the other
+    clips (negatives=other_clips) or every other goal in the batch (negatives=all), less the goals that are its own
+    frame or its positive's frame. Logits are phi(h_a) . psi(h_g) / sqrt(d) through
+    OGBench CRL's heads when `heads` is given, else h_a . h_g / sqrt(d). form=binary is OGBench CRL's binary NCE
+    (needs the heads: on one shared row the logits form a PSD Gram whose off-diagonal cannot all go negative);
+    form=infonce is the softmax over each anchor's kept goals. The binary NCE is averaged over all kept pairs
+    (reduction=pair_mean, OGBench's) or summed over each anchor's goals and averaged over anchors
+    (reduction=anchor_sum, InfoNCE's per-anchor scale). Plus the prediction anchor."""
+    form = str(cr_cfg.get("form", "binary"))
+    assert form in ("binary", "infonce"), f"loss.crl.form={form!r}; expected binary | infonce"
+    reduction = str(cr_cfg.get("reduction", "pair_mean"))
+    assert reduction in ("pair_mean", "anchor_sum"), f"loss.crl.reduction={reduction!r}; expected pair_mean | anchor_sum"
+    assert form == "infonce" or heads is not None, (
+        "loss.crl.form=binary on one shared representation has a ~log 2 floor; set loss.crl.heads or form=infonce")
     B, N, D = emb.shape
-    with torch.no_grad():
-        t = torch.arange(N - 1, device=emb.device).expand(B, N - 1)
-        off = torch.distributions.Geometric(probs=torch.tensor(1.0 - float(cr_cfg["discount"]), device=emb.device)).sample(t.shape).long() + 1
-        gt = torch.minimum(t + off, torch.full_like(t, N - 1))
-        clip = torch.arange(B, device=emb.device).repeat_interleave(N - 1)
-        lab = torch.eye(B * (N - 1), device=emb.device)
-        keep = (clip[:, None] != clip[None, :]) | lab.bool()
-    with torch.autocast(emb.device.type, enabled=False):
-        e = emb.float()
-        anc = e[:, :N - 1].reshape(B * (N - 1), D)
-        goal = e[torch.arange(B, device=emb.device)[:, None], gt].reshape(B * (N - 1), D)
-        logits = anc @ goal.T / D ** 0.5
-        bce = F.binary_cross_entropy_with_logits(logits, lab, reduction="none")
-        l = (bce * keep).sum() / keep.sum()
+    if pairs is not None:
+        assert "discount" not in cr_cfg, "with goal pairs the discount is data.dataset.goal_pairs.discount"
+        n = pairs.size(1) // 2
+        anc, goal = pairs[:, :n].reshape(B * n, D), pairs[:, n:].reshape(B * n, D)
+        lab = torch.eye(B * n, device=emb.device)
+        keep = torch.ones_like(lab, dtype=torch.bool)
+    else:
+        positives = str(cr_cfg.get("positives", "capped"))
+        negatives = str(cr_cfg.get("negatives", "other_clips"))
+        assert positives in ("capped", "truncated"), f"loss.crl.positives={positives!r}; expected capped | truncated"
+        assert negatives in ("other_clips", "all"), f"loss.crl.negatives={negatives!r}; expected other_clips | all"
         with torch.no_grad():
-            masked = logits.masked_fill(~keep, float("-inf"))
+            g = float(cr_cfg["discount"])
+            t = torch.arange(N - 1, device=emb.device).expand(B, N - 1)
+            if positives == "truncated":
+                # inverse CDF of P(k) proportional to g^(k-1) on k = 1 .. N-1-t
+                room = (N - 1 - t).double()
+                u = torch.rand(t.shape, device=emb.device, dtype=torch.float64)
+                k = torch.floor(torch.log1p(-u * (1 - g ** room)) / math.log(g)).long() + 1
+                gt = t + torch.minimum(k, room.long())
+            else:
+                off = torch.distributions.Geometric(probs=torch.tensor(1.0 - g, device=emb.device)).sample(t.shape).long() + 1
+                gt = torch.minimum(t + off, torch.full_like(t, N - 1))
+            clip = torch.arange(B, device=emb.device).repeat_interleave(N - 1)
+            lab = torch.eye(B * (N - 1), device=emb.device)
+            same = clip[:, None] == clip[None, :]
+            if negatives == "all":
+                ga, ta = gt.reshape(-1), t.reshape(-1)
+                dup = same & ((ga[None, :] == ga[:, None]) | (ga[None, :] == ta[:, None]))
+                keep = ~dup | lab.bool()
+            else:
+                keep = ~same | lab.bool()
+        anc = emb[:, :N - 1].reshape(B * (N - 1), D)
+        goal = emb[torch.arange(B, device=emb.device)[:, None], gt].reshape(B * (N - 1), D)
+    with torch.autocast(emb.device.type, enabled=False):
+        anc, goal = anc.float(), goal.float()
+        if heads is not None:
+            anc, goal = heads.phi(anc), heads.psi(goal)
+        logits = anc @ goal.T / anc.size(1) ** 0.5
+        masked = logits.masked_fill(~keep, float("-inf"))
+        if form == "binary":
+            bce = F.binary_cross_entropy_with_logits(logits, lab, reduction="none") * keep
+            K = float(keep[0].sum())
+            l = bce.sum(1).mean() if reduction == "anchor_sum" else bce.sum() / keep.sum()
+            # the best constant logit: one positive among K goals
+            p = 1.0 / K
+            trivial = -(p * math.log(p) + (1 - p) * math.log(1 - p)) * (K if reduction == "anchor_sum" else 1.0)
+        else:
+            l = -torch.log_softmax(masked, 1).diagonal().mean()
+            trivial = float(torch.log(keep.sum(1).double()).mean())
+        with torch.no_grad():
             output["crl_loss"] = l.detach()
+            output["crl_loss_trivial"] = torch.tensor(trivial, device=emb.device)
             output["crl_categorical_acc"] = (masked.argmax(1) == torch.arange(len(lab), device=emb.device)).float().mean()
             output["crl_logits_pos"] = logits.diagonal().mean()
             output["crl_logits_neg"] = (logits * (keep & ~lab.bool())).sum() / (keep & ~lab.bool()).sum()
@@ -483,6 +533,13 @@ def temporal_forward(self, batch, stage, cfg):
     # far frames (data.dataset.far_frames): rows of the same episode appended after the contiguous clip;
     # they enter the kernel term only
     n_far = int(cfg.data.dataset.get("far_frames", 0) or 0)
+    n_pair = int((cfg.data.dataset.get("goal_pairs", None) or {}).get("n", 0) or 0)
+    assert not (n_far and n_pair), "far_frames and goal_pairs both append rows; use one"
+    pairs = None
+    if n_pair:
+        pairs = emb[:, -2 * n_pair:]
+        emb = emb[:, :-2 * n_pair]
+        output["emb"] = emb
     far = None
     if n_far:
         fs = float(cfg.data.dataset.frameskip)
@@ -491,7 +548,7 @@ def temporal_forward(self, batch, stage, cfg):
         output["emb"] = emb
     act_emb = output["act_emb"]
     N, B = emb.size(1), emb.size(0)
-    assert N == batch["pixels"].size(1) - n_far, f"encoder returned {N} rows for {batch['pixels'].size(1)} frames"
+    assert N == batch["pixels"].size(1) - n_far - 2 * n_pair, f"encoder returned {N} rows for {batch['pixels'].size(1)} frames"
     assert act_emb.size(1) == N, f"action bridge has {act_emb.size(1)} tokens for {N} frames"
 
     # multistart: every (start, horizon) with start >= H-1 and start + horizon <= N-1, horizon <= max_pred_horizon
@@ -546,7 +603,9 @@ def temporal_forward(self, batch, stage, cfg):
     cr_cfg = cfg.loss.get("crl", None)
     if cr_cfg is not None:
         assert sd_cfg is None and not n_far, "loss.crl replaces loss.spectral; far frames are not used by it"
-        output["loss"] = output["loss"] + _crl_term(cr_cfg, output, emb, pred_emb, posframe)
+        output["loss"] = output["loss"] + _crl_term(cr_cfg, output, emb, pred_emb, posframe, getattr(self, "crl_heads", None), pairs)
+    else:
+        assert not n_pair, "data.dataset.goal_pairs feeds loss.crl only"
 
     train_common.log_step_metrics(self, output, emb, stage)
     return output
@@ -590,6 +649,9 @@ def build_loss_modules(cfg, gpu_norm):
     qk = cfg.get("quasimetric_head", None)
     if qk is not None:
         mods["quasimetric_head"] = QRLHead(**OmegaConf.to_container(qk.get("head", {}), resolve=True))
+    cr = cfg.loss.get("crl", None)
+    if cr is not None and cr.get("heads", None) is not None:
+        mods["crl_heads"] = CRLHeads(int(cfg.wm.embed_dim), **OmegaConf.to_container(cr.heads, resolve=True))
     return mods
 
 

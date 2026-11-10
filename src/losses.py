@@ -251,3 +251,34 @@ class QRLHead(nn.Module):
         lam = self._dual_update(l_step)
         self._parts = (l_push.detach(), l_step.detach(), lam)
         return self.push_weight * l_push + lam * l_step
+
+
+class _OGBenchMLP(nn.Module):
+    """OGBench utils/networks.py MLP: Dense on every layer; GELU (tanh form, flax's default) then LayerNorm
+    (eps 1e-6) after every layer but the last; kernels fan-avg uniform (Xavier), biases zero."""
+
+    def __init__(self, in_dim, dims, layer_norm=True):
+        super().__init__()
+        self.lins = nn.ModuleList(nn.Linear(a, b) for a, b in zip((in_dim, *dims[:-1]), dims))
+        self.norms = nn.ModuleList(nn.LayerNorm(d, eps=1e-6) if layer_norm else nn.Identity() for d in dims[:-1])
+        for lin in self.lins:
+            nn.init.xavier_uniform_(lin.weight)
+            nn.init.zeros_(lin.bias)
+
+    def forward(self, x):
+        for i, lin in enumerate(self.lins):
+            x = lin(x)
+            if i + 1 < len(self.lins):
+                x = self.norms[i](F.gelu(x, approximate="tanh"))
+        return x
+
+
+class CRLHeads(nn.Module):
+    """OGBench CRL's bilinear value heads (GCBilinearValue, ensemble=False, no action input): separate phi
+    and psi MLPs on the state and goal rows; the value is phi(s) . psi(g) / sqrt(latent_dim)."""
+
+    def __init__(self, embed_dim, hidden_dims=(512, 512, 512), latent_dim=512, layer_norm=True):
+        super().__init__()
+        dims = (*hidden_dims, latent_dim)
+        self.phi = _OGBenchMLP(embed_dim, dims, layer_norm)
+        self.psi = _OGBenchMLP(embed_dim, dims, layer_norm)
