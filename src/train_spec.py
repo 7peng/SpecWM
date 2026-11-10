@@ -362,14 +362,15 @@ def _direct_gram_batch_term(sd_cfg, output, emb, pred_emb, posframe, G):
     return float(sd_cfg.get("weight", 1.0)) * e + _pred_anchor_term(sd_cfg, output, emb, pred_emb, posframe)
 
 
-def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None):
+def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None, far=None):
     """Contrastive RL on the encoder rows. With `pairs` (B, 2n, D), the rows of data.dataset.goal_pairs (n
     anchors then their n goals per item, OGBench GCDataset sampling), every anchor's positive is its own goal and
     every other goal in the batch a negative. Without, every frame but a clip's last is an anchor; its positive is
     a later frame of the same clip at offset 1 + Geometric(1 - `discount`), capped at the clip end (positives=capped)
     or drawn from that law truncated to the clip (positives=truncated); its negatives are the goals of the other
     clips (negatives=other_clips) or every other goal in the batch (negatives=all), less the goals that are its own
-    frame or its positive's frame. Logits are phi(h_a) . psi(h_g) / sqrt(d) through
+    frame or its positive's frame. `far` (B, n_far, D), rows of the same episodes outside the clips, joins every
+    anchor's goals as negatives only. Logits are phi(h_a) . psi(h_g) / sqrt(d) through
     OGBench CRL's heads when `heads` is given, else h_a . h_g / sqrt(d). form=binary is OGBench CRL's binary NCE
     (needs the heads: on one shared row the logits form a PSD Gram whose off-diagonal cannot all go negative);
     form=infonce is the softmax over each anchor's kept goals. The binary NCE is averaged over all kept pairs
@@ -416,6 +417,10 @@ def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None):
                 keep = ~same | lab.bool()
         anc = emb[:, :N - 1].reshape(B * (N - 1), D)
         goal = emb[torch.arange(B, device=emb.device)[:, None], gt].reshape(B * (N - 1), D)
+        if far is not None:
+            goal = torch.cat([goal, far.reshape(-1, D)], 0)
+            lab = torch.cat([lab, torch.zeros(len(lab), far.size(0) * far.size(1), device=emb.device)], 1)
+            keep = torch.cat([keep, torch.ones(len(keep), far.size(0) * far.size(1), dtype=torch.bool, device=emb.device)], 1)
     with torch.autocast(emb.device.type, enabled=False):
         anc, goal = anc.float(), goal.float()
         if heads is not None:
@@ -438,6 +443,7 @@ def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None):
             output["crl_categorical_acc"] = (masked.argmax(1) == torch.arange(len(lab), device=emb.device)).float().mean()
             output["crl_logits_pos"] = logits.diagonal().mean()
             output["crl_logits_neg"] = (logits * (keep & ~lab.bool())).sum() / (keep & ~lab.bool()).sum()
+            assert torch.equal(lab.argmax(1), torch.arange(len(lab), device=emb.device)), "every anchor's positive is column i"
     return float(cr_cfg.get("weight", 1.0)) * l + _pred_anchor_term(cr_cfg, output, emb, pred_emb, posframe)
 
 
@@ -602,8 +608,10 @@ def temporal_forward(self, batch, stage, cfg):
         output["loss"] = output["loss"] + _spectral_term(self, sd_cfg, output, batch, emb, pred_emb, posframe, far)
     cr_cfg = cfg.loss.get("crl", None)
     if cr_cfg is not None:
-        assert sd_cfg is None and not n_far, "loss.crl replaces loss.spectral; far frames are not used by it"
-        output["loss"] = output["loss"] + _crl_term(cr_cfg, output, emb, pred_emb, posframe, getattr(self, "crl_heads", None), pairs)
+        assert sd_cfg is None, "loss.crl replaces loss.spectral"
+        assert far is None or (str(cr_cfg.get("form", "binary")) == "infonce" and pairs is None), "far frames enter loss.crl as InfoNCE negatives of in-clip pairs only"
+        output["loss"] = output["loss"] + _crl_term(cr_cfg, output, emb, pred_emb, posframe, getattr(self, "crl_heads", None), pairs,
+                                                    None if far is None else far["emb"])
     else:
         assert not n_pair, "data.dataset.goal_pairs feeds loss.crl only"
 

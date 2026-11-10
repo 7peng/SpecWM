@@ -127,3 +127,26 @@ def test_within_clip_negatives_mask_only_duplicates():
     ref = (np.log(np.exp(zm - m).sum(1)) + m[:, 0] - z.diagonal()).mean()
     assert abs(loss - ref) < 1e-5, (loss, ref)
     assert same[keep & ~np.eye(len(z), dtype=bool)].any(), "own-clip goals must remain as negatives"
+
+
+def test_far_rows_join_infonce_as_negatives_only():
+    torch.manual_seed(2)
+    B, N, D, nf = 3, 6, 8, 2
+    emb = torch.randn(B, N, D); pred = torch.randn(B, 3, D); pos = torch.tensor([1, 2, 3]); far = torch.randn(B, nf, D)
+    cfg = {"discount": 0.8, "form": "infonce", "positives": "truncated", "negatives": "all", "anchor": {"weight": 0.0}}
+    torch.manual_seed(9); out = {}; loss = float(_crl_term(cfg, out, emb, pred, pos, None, None, far))
+    torch.manual_seed(9)
+    t = torch.arange(N - 1).expand(B, N - 1); room = (N - 1 - t).double()
+    u = torch.rand(t.shape, dtype=torch.float64)
+    gt = (t + torch.minimum(torch.floor(torch.log1p(-u * (1 - 0.8 ** room)) / np.log(0.8)).long() + 1, room.long())).numpy()
+    e = emb.numpy().astype(np.float64)
+    anc = e[:, :N - 1].reshape(-1, D)
+    goal = np.concatenate([e[np.arange(B)[:, None], gt].reshape(-1, D), far.numpy().astype(np.float64).reshape(-1, D)])
+    z = anc @ goal.T / np.sqrt(D)
+    clip = np.repeat(np.arange(B), N - 1); ga, ta = gt.reshape(-1), t.numpy().reshape(-1)
+    same = clip[:, None] == clip[None, :]
+    keep = ~(same & ((ga[None, :] == ga[:, None]) | (ga[None, :] == ta[:, None]))) | np.eye(len(anc), dtype=bool)
+    keep = np.concatenate([keep, np.ones((len(anc), B * nf), bool)], 1)
+    zm = np.where(keep, z, -np.inf); m = zm.max(1, keepdims=True)
+    ref = (np.log(np.exp(zm - m).sum(1)) + m[:, 0] - z[np.arange(len(anc)), np.arange(len(anc))]).mean()
+    assert abs(loss - ref) < 1e-5, (loss, ref)

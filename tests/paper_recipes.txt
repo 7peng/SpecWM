@@ -48,3 +48,7 @@ train_spec calvin_state_ablation_tempered
 train_spec scene_crl_heads
 train_spec scene_crl_infonce
 train_spec scene_crl_infonce_within
+train_spec cube_crl_heads
+train_spec cube_crl_infonce_within
+train_spec calvin_crl_heads
+train_spec calvin_crl_infonce_within
