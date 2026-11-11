@@ -1,0 +1,12 @@
+{
+  "heads": {
+    "seeds_scored": 3,
+    "mean": 22.22222222222222,
+    "sample_sd": 1.9531550923607721
+  },
+  "infonce-within": {
+    "seeds_scored": 3,
+    "mean": 40.77777777777778,
+    "sample_sd": 2.7148426050823597
+  }
+}

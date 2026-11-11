@@ -1,0 +1,181 @@
+run_id: calvin-crl-heads-s3
+seed: 3
+split_seed: 3072
+output_model_name: lewm
+img_size: 224
+train_split: 0.9
+auto_resume: true
+val_split_by_episode: true
+num_workers: 8
+encoder_opt: region
+fused_predictor_attn: true
+compile_predictor: true
+val_num_workers: 0
+wandb:
+  enabled: true
+  config:
+    name: ${run_id}
+    id: ${run_id}
+    resume: allow
+    log_model: false
+    project: lewm-calvin-within
+data:
+  dataset:
+    num_steps: ${eval:'${wm.num_preds} + ${wm.history_size}'}
+    frameskip: 10
+    name: calvin_abc_d_mix_lateonset
+    goal_pairs:
+      'n': 11
+      discount: 0.99
+    path: ${oc.env:CALVIN_STAGE_DIR}/calvin_abc_d_mix_lateonset.h5
+    keys_to_load:
+    - pixels
+    - action
+    - scene_obs
+    - robot_obs
+    - ep_idx
+    - step_idx
+    keys_to_cache:
+    - action
+    - scene_obs
+    - robot_obs
+    - ep_idx
+    - step_idx
+    raw_columns: []
+trainer:
+  accelerator: gpu
+  precision: bf16
+  gradient_clip_val: 1.0
+  limit_val_batches: 8
+  val_check_interval: 500
+  check_val_every_n_epoch: null
+  devices: 1
+  max_epochs: 1
+  max_steps: 33375
+loader:
+  num_workers: ${num_workers}
+  persistent_workers: true
+  prefetch_factor: 2
+  pin_memory: false
+  batch_size: 24
+optimizer:
+  type: MuonAdamW
+  weight_decay: 0.001
+  lr: 7.3e-05
+  muon_lr: 0.001461
+  nonmatrix_lr: 0.0002922
+wm:
+  history_size: 3
+  embed_dim: 192
+  num_preds: 20
+  max_pred_horizon: 1
+  pred_norm: true
+model:
+  _target_: jepa.JEPA
+  embed_dim: ${wm.embed_dim}
+  emb_norm: ${oc.select:wm.emb_norm,true}
+  pred_norm: ${oc.select:wm.pred_norm,false}
+  encoder:
+    _target_: stable_pretraining.backbone.utils.vit_hf
+    size: tiny
+    patch_size: 14
+    image_size: ${img_size}
+    pretrained: false
+    use_mask_token: false
+  predictor:
+    num_frames: ${wm.history_size}
+    input_dim: ${wm.embed_dim}
+    hidden_dim: ${wm.embed_dim}
+    output_dim: ${wm.embed_dim}
+    depth: 6
+    heads: 16
+    mlp_dim: 2048
+    dim_head: 64
+    dropout: 0.1
+    emb_dropout: 0.0
+    _target_: networks.ARPredictor
+  action_encoder:
+    _target_: networks.Embedder
+    input_dim: 70
+    emb_dim: ${wm.embed_dim}
+    smoothed_dim: null
+  projector:
+    _target_: networks.MLP
+    input_dim: ${wm.embed_dim}
+    output_dim: ${wm.embed_dim}
+    hidden_dim: 2048
+    norm_fn:
+      _partial_: true
+      _target_: torch.nn.LayerNorm
+  pred_proj:
+    _target_: networks.MLP
+    input_dim: ${wm.embed_dim}
+    output_dim: ${wm.embed_dim}
+    hidden_dim: 2048
+    norm_fn:
+      _partial_: true
+      _target_: torch.nn.LayerNorm
+loss:
+  sigreg:
+    kwargs:
+      knots: 17
+      num_proj: 1024
+    weight: 0
+  crl:
+    weight: 2.0
+    form: binary
+    reduction: anchor_sum
+    heads:
+      hidden_dims:
+      - 512
+      - 512
+      - 512
+      latent_dim: 512
+      layer_norm: true
+    anchor:
+      weight: 2.0
+      stop_gradient: false
+probe:
+  enabled: true
+  every_n_epochs: 1
+  n_frames: 5000
+  pixels_key: pixels
+  reps:
+  - emb
+  - cls
+  ridge_alpha: cv
+  n_splits: 5
+  mlp: true
+  excess: true
+  excess_covariate: arm
+  seed: 0
+  targets:
+  - red_xyz=scene_obs[6:9]
+  - blue_xyz=scene_obs[12:15]
+  - pink_xyz=scene_obs[18:21]
+  - slider=scene_obs[0]
+  - drawer=scene_obs[1]
+  - switch=scene_obs[3]
+  - arm=robot_obs[0:15]
+suite_probe:
+  enabled: true
+  pack: ${oc.env:CALVIN_PROBE_PACK_DIR}
+  every_n_steps: 500
+  batch: 512
+  groups: null
+  log_per_cell: true
+  dtype: fp16
+step_snapshots:
+  start: 1000
+  stop: 240000
+  every: 1000
+full_ckpt_every_n_steps: 1500
+optim_modules: (model)
+head_optim:
+  modules: crl_heads
+  optimizer:
+    type: Adam
+    lr: 0.0003
+scheduler:
+  steps_per_epoch: 120000
+  warmup_epochs: 0.05

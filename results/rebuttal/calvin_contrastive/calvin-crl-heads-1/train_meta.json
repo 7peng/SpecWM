@@ -1,0 +1,10 @@
+{
+ "run_id": "calvin-crl-heads-1",
+ "dataset": "calvin_abc_d_mix_lateonset",
+ "frameskip": 10,
+ "num_steps": 23,
+ "history_size": 3,
+ "num_preds": 20,
+ "max_pred_horizon": 1,
+ "max_pred_horizon_config": 1
+}

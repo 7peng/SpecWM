@@ -1,0 +1,78 @@
+diff --git a/config/train/calvin_crl_heads.yaml b/config/train/calvin_crl_heads.yaml
+index 4f49329..568270a 100644
+--- a/config/train/calvin_crl_heads.yaml
++++ b/config/train/calvin_crl_heads.yaml
+@@ -44,6 +44,7 @@ trainer:
+   max_epochs: 1
+   max_steps: 33375
+ scheduler:
++  steps_per_epoch: 120000
+   warmup_epochs: 0.05
+ loader:
+   batch_size: 24
+diff --git a/config/train/calvin_crl_infonce_within.yaml b/config/train/calvin_crl_infonce_within.yaml
+index 93c4974..88a1f49 100644
+--- a/config/train/calvin_crl_infonce_within.yaml
++++ b/config/train/calvin_crl_infonce_within.yaml
+@@ -39,6 +39,7 @@ trainer:
+   max_epochs: 1
+   max_steps: 33375
+ scheduler:
++  steps_per_epoch: 120000
+   warmup_epochs: 0.05
+ loader:
+   batch_size: 24
+diff --git a/scripts/eval_cem.py b/scripts/eval_cem.py
+index f7764a9..29de71f 100755
+--- a/scripts/eval_cem.py
++++ b/scripts/eval_cem.py
+@@ -164,8 +164,8 @@ def run_offset(args, offset, gpu):
+     if nb == 1:
+         cmd = [PYTHON, "src/eval.py", "--config-name", args.eval_config, *overrides(args, offset)]
+         with open(log, "w") as f:
+-            subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
+-        sr = parse_sr(log)
++            completed = subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
++        sr = parse_sr(log) if completed.returncode == 0 else None
+     else:
+         # equal batches partition the sorted valid starts inside one process (eval.episode_batches);
+         # the offset's number is their mean, the per-batch records land in O<k>_b<b>.txt
+@@ -177,11 +177,11 @@ def run_offset(args, offset, gpu):
+         cmd = [PYTHON, "src/eval.py", "--config-name", args.eval_config,
+                *base, f"eval.num_eval={ne}", f"eval.episode_batches={nb}", f"output.filename={txt}"]
+         with open(log, "w") as f:
+-            subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
++            completed = subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
+         srs = [parse_sr(out_dir / f"O{offset}_b{b}.txt") for b in range(nb)]
+         for b in range(nb):
+             print(f"  O{offset} batch {b} rows {edges[b]}:{edges[b + 1]}: success_rate={srs[b]}", flush=True)
+-        sr = None if any(x is None for x in srs) else sum(x * (edges[i + 1] - edges[i]) for i, x in enumerate(srs)) / n
++        sr = None if completed.returncode or any(x is None for x in srs) else sum(x * (edges[i + 1] - edges[i]) for i, x in enumerate(srs)) / n
+         with open(log, "a") as f:
+             f.write(f"batches: {srs} edges {edges}\n" + (f"'success_rate': {sr}\n" if sr is not None else ""))
+         if sr is not None:
+@@ -299,8 +299,11 @@ def main():
+         if ok:
+             w.writerow(["macro", "", round(sum(ok) / len(ok), 4)])
+ 
+-    print(f"=== {args.arm} COMPLETE ===")
++    failed = any(value is None for value in results.values())
++    print(f"=== {args.arm} {'FAILED' if failed else 'COMPLETE'} ===")
+     print((out_dir / "summary.csv").read_text())
++    if failed:
++        raise SystemExit(1)
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/src/utils.py b/src/utils.py
+index 83b2c2f..f13dbb4 100644
+--- a/src/utils.py
++++ b/src/utils.py
+@@ -464,6 +464,7 @@ class StepLossLogger(Callback):
+         self.keys = keys or [
+             "fit/loss", "fit/pred_loss", "fit/sigreg_loss", "fit/spec_loss", "fit/pred_anchor_loss",
+             "fit/qrl_loss", "fit/emb_norm", "fit/emb_norm_std",
++            "fit/crl_loss", "fit/crl_loss_trivial", "fit/pred_anchor_cos",
+         ]
+         self._wrote_header = False
+ 

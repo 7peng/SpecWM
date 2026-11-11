@@ -1,0 +1,7 @@
+run_id,O50_20000,O50_24000,O50_28000,mean
+calvin-crl-heads-s3,19.0,30.0,20.0,23.0
+calvin-crl-heads-1,30.0,21.0,20.0,23.666666666666668
+calvin-crl-infonce-within-s2,35.0,39.0,39.0,37.666666666666664
+calvin-crl-infonce-within-1,43.0,40.0,43.0,42.0
+calvin-crl-heads-s2,22.0,18.0,20.0,20.0
+calvin-crl-infonce-within-s3,41.0,36.0,51.0,42.666666666666664

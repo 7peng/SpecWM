@@ -1,0 +1,30 @@
+{
+ "arm": "calvin-crl-heads-s2-final",
+ "policy": "lewm/calvin-crl-heads-s2/weights_epoch_1.pt",
+ "action_block": 10,
+ "ckpt_sha256_16": "5e0f8761949944bf",
+ "git_sha": "55bb378abead27a318e24dfcf7bc15bf7945ec2e",
+ "git_dirty": 59,
+ "date": "2026-11-10T09:05:28.972575-08:00",
+ "extra": [],
+ "protocol": "ICLR-scene-cem-v3",
+ "eval_config": "calvin",
+ "batches": 1,
+ "stats_dataset": "calvin_abc_d_mix_lateonset",
+ "dataset_override": null,
+ "stablewm_home": "/scratch/users/hmolin/specwm_contrastive_20261109",
+ "action_stats": {
+  "name": "calvin_abc_d_mix_lateonset",
+  "path": "/scratch/users/hmolin/specwm_contrastive_20261109/datasets/calvin_abc_d_mix_lateonset.h5",
+  "bytes": 431570376240,
+  "mtime": "2026-11-09T22:46:30.977449-08:00"
+ },
+ "task_sets": {
+  "50": {
+   "name": "calvin_offset_tasks_O50",
+   "path": "/scratch/users/hmolin/specwm_contrastive_20261109/datasets/calvin_offset_tasks_O50.h5",
+   "bytes": 560974312,
+   "mtime": "2026-09-06T01:22:17.809775-07:00"
+  }
+ }
+}
