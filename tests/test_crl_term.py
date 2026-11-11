@@ -150,3 +150,21 @@ def test_far_rows_join_infonce_as_negatives_only():
     zm = np.where(keep, z, -np.inf); m = zm.max(1, keepdims=True)
     ref = (np.log(np.exp(zm - m).sum(1)) + m[:, 0] - z[np.arange(len(anc)), np.arange(len(anc))]).mean()
     assert abs(loss - ref) < 1e-5, (loss, ref)
+
+
+def test_anchor_warmup_scales_only_the_anchor():
+    from train_spec import _anchor_scale
+    a = {"weight": 2.0, "warmup_steps": 100, "ramp_steps": 50}
+    assert [_anchor_scale(a, s) for s in (0, 99, 100, 125, 150, 10000)] == [0.0, 0.0, 0.0, 0.5, 1.0, 1.0]
+    assert _anchor_scale({"weight": 2.0}, 0) == 1.0
+    torch.manual_seed(0)
+    B, N, D = 3, 6, 8
+    emb = torch.randn(B, N, D); pred = torch.randn(B, 3, D); pos = torch.tensor([1, 2, 3])
+    cfg = {"discount": 0.8, "form": "infonce", "anchor": {"weight": 2.0, "warmup_steps": 100, "ramp_steps": 50}}
+    vals = {}
+    for step in (0, 125, 1000):
+        torch.manual_seed(4); out = {}
+        vals[step] = float(_crl_term(cfg, out, emb, pred, pos, step=step))
+        assert abs(float(out["pred_anchor_scale"]) - _anchor_scale(cfg["anchor"], step)) < 1e-9
+    crl = float(out["crl_loss"]); anchor = vals[1000] - crl
+    assert abs(vals[0] - crl) < 1e-5 and abs(vals[125] - (crl + 0.5 * anchor)) < 1e-5 and anchor > 0

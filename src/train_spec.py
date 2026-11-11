@@ -362,7 +362,15 @@ def _direct_gram_batch_term(sd_cfg, output, emb, pred_emb, posframe, G):
     return float(sd_cfg.get("weight", 1.0)) * e + _pred_anchor_term(sd_cfg, output, emb, pred_emb, posframe)
 
 
-def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None, far=None):
+def _anchor_scale(a_cfg, step):
+    """Prediction-anchor multiplier: 0 for `warmup_steps` batches, then linear to 1 over `ramp_steps`."""
+    w, r = int(a_cfg.get("warmup_steps", 0) or 0), int(a_cfg.get("ramp_steps", 0) or 0)
+    if step < w:
+        return 0.0
+    return 1.0 if r <= 0 else min(1.0, (step - w) / r)
+
+
+def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None, far=None, step=0):
     """Contrastive RL on the encoder rows. With `pairs` (B, 2n, D), the rows of data.dataset.goal_pairs (n
     anchors then their n goals per item, OGBench GCDataset sampling), every anchor's positive is its own goal and
     every other goal in the batch a negative. Without, every frame but a clip's last is an anchor; its positive is
@@ -444,7 +452,9 @@ def _crl_term(cr_cfg, output, emb, pred_emb, posframe, heads=None, pairs=None, f
             output["crl_logits_pos"] = logits.diagonal().mean()
             output["crl_logits_neg"] = (logits * (keep & ~lab.bool())).sum() / (keep & ~lab.bool()).sum()
             assert torch.equal(lab.argmax(1), torch.arange(len(lab), device=emb.device)), "every anchor's positive is column i"
-    return float(cr_cfg.get("weight", 1.0)) * l + _pred_anchor_term(cr_cfg, output, emb, pred_emb, posframe)
+    a = _anchor_scale(cr_cfg.get("anchor", None) or {}, step)
+    output["pred_anchor_scale"] = torch.tensor(a, device=emb.device)
+    return float(cr_cfg.get("weight", 1.0)) * l + a * _pred_anchor_term(cr_cfg, output, emb, pred_emb, posframe)
 
 
 def _spectral_term(mod, sd_cfg, output, batch, emb, pred_emb, posframe, far=None):
@@ -611,7 +621,7 @@ def temporal_forward(self, batch, stage, cfg):
         assert sd_cfg is None, "loss.crl replaces loss.spectral"
         assert far is None or (str(cr_cfg.get("form", "binary")) == "infonce" and pairs is None), "far frames enter loss.crl as InfoNCE negatives of in-clip pairs only"
         output["loss"] = output["loss"] + _crl_term(cr_cfg, output, emb, pred_emb, posframe, getattr(self, "crl_heads", None), pairs,
-                                                    None if far is None else far["emb"])
+                                                    None if far is None else far["emb"], train_common.batches_done(self))
     else:
         assert not n_pair, "data.dataset.goal_pairs feeds loss.crl only"
 

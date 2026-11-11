@@ -3,7 +3,8 @@
 # (OGBench's pair mean is the same objective up to a constant under Adam), no actions. Pairs follow OGBench's GCDataset:
 # 11 per clip (264 per update), anchors uniform over the fitting episodes' frames, goals 1 + Geometric(1 - 0.99) env
 # steps later in the same episode (their discount), every other goal in the batch a negative. The 24 clips carry the
-# prediction anchor as in SpecWM; the pairs add 528 images per update.
+# prediction anchor as in SpecWM, off for the first 2,000 steps and ramped in linearly over the next 2,000; the pairs
+# add 528 images per update.
 #   MUJOCO_GL=egl python src/train_spec.py --config-name=cube_crl_heads run_id=cube_crl_heads-1
 defaults:
 - env: cube
@@ -61,6 +62,8 @@ loss:
     anchor:
       weight: 2.0
       stop_gradient: false
+      warmup_steps: 2000
+      ramp_steps: 2000
 step_snapshots:
   stop: 240000
   every: 1000

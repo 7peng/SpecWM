@@ -197,7 +197,7 @@ def log_step_metrics(self, output, emb, stage):
     for _k in ("emb_dc_norm", "emb_dev_norm", "emb_dc_dev_ratio", "emb_eff_rank",
                "gram_std_within", "kern_std_within", "kern_std_min_frac",
                "gram_std_cross_pred", "kern_std_cross_pred",
-               "spec_mse", "spec_target_rank", "pred_cos", "pred_anchor_cos"):
+               "spec_mse", "spec_target_rank", "pred_cos", "pred_anchor_cos", "pred_anchor_scale"):
         if _k in output:
             losses_dict[f"{stage}/{_k}"] = output[_k].detach()
     losses_dict[f"{stage}/batch"] = torch.full((), float(batches_done(self)), device=emb.device)

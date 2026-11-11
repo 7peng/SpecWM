@@ -39,6 +39,7 @@ trainer:
   max_epochs: 1
   max_steps: 33375
 scheduler:
+  steps_per_epoch: 120000
   warmup_epochs: 0.05
 loader:
   batch_size: 24

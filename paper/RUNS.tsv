@@ -97,9 +97,9 @@ scene	crl	3	train_spec	scene_crl_heads	scene-crl-heads-s3	25	contrastive
 scene	infonce	1	train_spec	scene_crl_infonce_within	scene-crl-infonce-within-2	25	contrastive	
 scene	infonce	2	train_spec	scene_crl_infonce_within	scene-crl-infonce-within-s2	25	contrastive	
 scene	infonce	3	train_spec	scene_crl_infonce_within	scene-crl-infonce-within-s3	25	contrastive	
-cube	crl	1	train_spec	cube_crl_heads	cube-crl-heads-1	25	contrastive	
-cube	crl	2	train_spec	cube_crl_heads	cube-crl-heads-s2	25	contrastive	
-cube	crl	3	train_spec	cube_crl_heads	cube-crl-heads-s3	25	contrastive	
+cube	crl	1	train_spec	cube_crl_heads	cube-crl-heads-wu-1	25	contrastive	
+cube	crl	2	train_spec	cube_crl_heads	cube-crl-heads-wu-s2	25	contrastive	
+cube	crl	3	train_spec	cube_crl_heads	cube-crl-heads-wu-s3	25	contrastive	
 cube	infonce	1	train_spec	cube_crl_infonce_within	cube-crl-infonce-within-1	25	contrastive	
 cube	infonce	2	train_spec	cube_crl_infonce_within	cube-crl-infonce-within-s2	25	contrastive	
 cube	infonce	3	train_spec	cube_crl_infonce_within	cube-crl-infonce-within-s3	25	contrastive	

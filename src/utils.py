@@ -464,6 +464,7 @@ class StepLossLogger(Callback):
         self.keys = keys or [
             "fit/loss", "fit/pred_loss", "fit/sigreg_loss", "fit/spec_loss", "fit/pred_anchor_loss",
             "fit/qrl_loss", "fit/emb_norm", "fit/emb_norm_std",
+            "fit/crl_loss", "fit/crl_loss_trivial", "fit/pred_anchor_cos",
         ]
         self._wrote_header = False
 

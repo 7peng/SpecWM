@@ -164,8 +164,8 @@ def run_offset(args, offset, gpu):
     if nb == 1:
         cmd = [PYTHON, "src/eval.py", "--config-name", args.eval_config, *overrides(args, offset)]
         with open(log, "w") as f:
-            subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
-        sr = parse_sr(log)
+            completed = subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
+        sr = parse_sr(log) if completed.returncode == 0 else None
     else:
         # equal batches partition the sorted valid starts inside one process (eval.episode_batches);
         # the offset's number is their mean, the per-batch records land in O<k>_b<b>.txt
@@ -177,11 +177,11 @@ def run_offset(args, offset, gpu):
         cmd = [PYTHON, "src/eval.py", "--config-name", args.eval_config,
                *base, f"eval.num_eval={ne}", f"eval.episode_batches={nb}", f"output.filename={txt}"]
         with open(log, "w") as f:
-            subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
+            completed = subprocess.run(cmd, cwd=ICLR, env=env, stdout=f, stderr=subprocess.STDOUT)
         srs = [parse_sr(out_dir / f"O{offset}_b{b}.txt") for b in range(nb)]
         for b in range(nb):
             print(f"  O{offset} batch {b} rows {edges[b]}:{edges[b + 1]}: success_rate={srs[b]}", flush=True)
-        sr = None if any(x is None for x in srs) else sum(x * (edges[i + 1] - edges[i]) for i, x in enumerate(srs)) / n
+        sr = None if completed.returncode or any(x is None for x in srs) else sum(x * (edges[i + 1] - edges[i]) for i, x in enumerate(srs)) / n
         with open(log, "a") as f:
             f.write(f"batches: {srs} edges {edges}\n" + (f"'success_rate': {sr}\n" if sr is not None else ""))
         if sr is not None:
@@ -299,8 +299,11 @@ def main():
         if ok:
             w.writerow(["macro", "", round(sum(ok) / len(ok), 4)])
 
-    print(f"=== {args.arm} COMPLETE ===")
+    failed = any(value is None for value in results.values())
+    print(f"=== {args.arm} {'FAILED' if failed else 'COMPLETE'} ===")
     print((out_dir / "summary.csv").read_text())
+    if failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
